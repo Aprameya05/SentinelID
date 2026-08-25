@@ -16,23 +16,22 @@ Run:
 """
 
 import argparse
-import time
 import random
+import time
 from pathlib import Path
 
 import cv2
 import numpy as np
 import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
-from torch.cuda.amp import GradScaler, autocast
+import wandb
 from omegaconf import OmegaConf
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
-import wandb
+from torch.cuda.amp import GradScaler, autocast
+from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
 
-from models.deepfake.cnn_transformer import DeepfakeDetector, DeepfakeLoss
 from evaluation.metrics import compute_verification_metrics
+from models.deepfake.cnn_transformer import DeepfakeDetector, DeepfakeLoss
 
 console = Console()
 
@@ -102,8 +101,6 @@ class DeepfakeDataset(Dataset):
         return len(self.samples)
 
     def __getitem__(self, idx: int):
-        import torchvision.transforms.functional as TF
-        from PIL import Image
 
         path, label = self.samples[idx]
         img = cv2.imread(str(path))
@@ -143,7 +140,7 @@ class DeepfakeDataset(Dataset):
         labels = [s[1] for s in self.samples]
         n_real = max(1, len(labels) - sum(labels))
         n_fake = max(1, sum(labels))
-        weights = [1.0 / n_real if l == 0 else 1.0 / n_fake for l in labels]
+        weights = [1.0 / n_real if lbl == 0 else 1.0 / n_fake for lbl in labels]
         return torch.tensor(weights)
 
 

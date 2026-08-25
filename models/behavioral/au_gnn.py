@@ -16,11 +16,11 @@ Reference: "Graph-based AU Detection" (Li et al., ICCV 2019)
            "Learning Dynamic Graph Representation for Facial AU" (Luo et al., AAAI 2022)
 """
 
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from typing import NamedTuple
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Anatomical landmark adjacency (68-point iBUG schema)
@@ -111,13 +111,11 @@ class ActionUnitGNN(nn.Module):
     Graph neural network for facial action unit detection.
 
     Input:
-      landmarks: (B, 68, 2) normalized (x,y) landmark coordinates
-      image_features: (B, 68, C) per-landmark visual features (optional patch embeds)
+      landmarks: (B, n_landmarks, 2) normalized (x,y) landmark coordinates
 
     Output:
-      au_intensities: (B, num_aus) intensity in [0, 5] per AU
-      liveness_signal: (B,) behavioral liveness score
-      gaze: (B, 3) gaze direction unit vector (optional)
+      au_intensities: (B, n_aus) intensity >= 0
+      attn_weights: (B, n_landmarks, 1) attention weights used for pooling
     """
 
     # FACS AUs we predict (DISFA subset)
@@ -125,17 +123,19 @@ class ActionUnitGNN(nn.Module):
 
     def __init__(
         self,
-        in_dim: int = 2,            # (x, y) coords; set to 2+C if using visual features
+        n_landmarks: int = 68,
+        n_aus: int = len(DISFA_AUS),
+        in_dim: int = 2,
         hidden_dim: int = 128,
         num_layers: int = 4,
-        num_aus: int = len(DISFA_AUS),
         dropout: float = 0.2,
     ):
         super().__init__()
-        self.num_aus = num_aus
+        self.num_aus = n_aus
+        self.n_landmarks = n_landmarks
 
         # Register fixed adjacency
-        self.register_buffer("edge_index", build_adjacency(68))
+        self.register_buffer("edge_index", build_adjacency(n_landmarks))
 
         # Node feature encoder
         self.node_encoder = nn.Sequential(
@@ -159,7 +159,7 @@ class ActionUnitGNN(nn.Module):
             nn.Linear(hidden_dim, 128),
             nn.GELU(),
             nn.Dropout(dropout),
-            nn.Linear(128, num_aus),
+            nn.Linear(128, n_aus),
             nn.ReLU(),  # AU intensities >= 0
         )
 
@@ -171,14 +171,15 @@ class ActionUnitGNN(nn.Module):
             nn.Sigmoid(),
         )
 
-    def forward(self, landmarks: Tensor) -> dict[str, Tensor]:
+    def forward(self, landmarks: Tensor) -> tuple[Tensor, Tensor]:
         """
-        landmarks: (B, 68, 2) in normalised image coordinates
+        landmarks: (B, n_landmarks, 2) in normalised image coordinates
+        Returns: (au_intensities, attn_weights)
+          au_intensities: (B, n_aus) — values >= 0
+          attn_weights:   (B, n_landmarks, 1)
         """
-        B = landmarks.shape[0]
-
         # Encode nodes
-        x = self.node_encoder(landmarks)    # (B, 68, hidden_dim)
+        x = self.node_encoder(landmarks)    # (B, N, hidden_dim)
 
         # Graph convolutions
         edge_index = self.edge_index
@@ -187,40 +188,33 @@ class ActionUnitGNN(nn.Module):
             x = self.dropout(x)
 
         # Attention pooling for graph-level representation
-        attn_weights = F.softmax(self.attn_pool(x), dim=1)  # (B, 68, 1)
+        attn_weights = F.softmax(self.attn_pool(x), dim=1)  # (B, N, 1)
         graph_repr = (attn_weights * x).sum(dim=1)           # (B, hidden_dim)
 
-        # AU intensities (0-5 scale as in DISFA)
+        # AU intensities (ReLU ensures >= 0; scaled to ~DISFA range)
         au_intensities = self.au_head(graph_repr) * 5.0
 
-        # Behavioral liveness signal
-        liveness_signal = self.liveness_head(graph_repr).squeeze(1)
-
-        return {
-            "au_intensities": au_intensities,    # (B, 12)
-            "liveness_signal": liveness_signal,  # (B,)
-            "graph_repr": graph_repr,            # (B, hidden_dim) for fusion
-        }
+        return au_intensities, attn_weights
 
 
 class GazeRegressionHead(nn.Module):
     """
     Predict 3D gaze direction from eye-region crop.
-    Input: (B, 3, 64, 64) eye crop (left or right eye)
+    Input: (B, in_channels, 64, 64) eye crop
     Output: (B, 3) unit gaze vector
     """
 
-    def __init__(self):
+    def __init__(self, in_channels: int = 3, hidden_dim: int = 128):
         super().__init__()
         self.backbone = nn.Sequential(
-            nn.Conv2d(3, 32, 3, stride=2, padding=1), nn.BatchNorm2d(32), nn.ReLU(),
+            nn.Conv2d(in_channels, 32, 3, stride=2, padding=1), nn.BatchNorm2d(32), nn.ReLU(),
             nn.Conv2d(32, 64, 3, stride=2, padding=1), nn.BatchNorm2d(64), nn.ReLU(),
-            nn.Conv2d(64, 128, 3, stride=2, padding=1), nn.BatchNorm2d(128), nn.ReLU(),
+            nn.Conv2d(64, hidden_dim, 3, stride=2, padding=1), nn.BatchNorm2d(hidden_dim), nn.ReLU(),
             nn.AdaptiveAvgPool2d(1),
         )
         self.head = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(128, 64),
+            nn.Linear(hidden_dim, 64),
             nn.ReLU(),
             nn.Linear(64, 3),
         )

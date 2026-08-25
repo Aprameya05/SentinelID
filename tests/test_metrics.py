@@ -5,10 +5,11 @@ These run without any GPU or dataset — pure numpy.
 
 import numpy as np
 import pytest
+
 from evaluation.metrics import (
+    audit_demographic_fairness,
     compute_liveness_metrics,
     compute_verification_metrics,
-    audit_demographic_fairness,
 )
 
 
@@ -106,7 +107,6 @@ class TestDemographicFairness:
 
     def test_fmr_fnmr_perfect(self):
         # Perfect classifier: FMR=0, FNMR=0 for all groups
-        n = 200
         labels = np.array([1] * 100 + [0] * 100)
         scores = np.array([1.0] * 100 + [0.0] * 100)
         groups = np.array(["a"] * 100 + ["b"] * 100)

@@ -30,15 +30,15 @@ Usage:
 """
 
 import argparse
-import os
-import sys
 import multiprocessing as mp
+import sys
 from pathlib import Path
 from typing import Optional
-import numpy as np
+
 import cv2
+import numpy as np
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn, BarColumn, TaskProgressColumn
+from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TimeElapsedColumn
 
 console = Console()
 
@@ -207,7 +207,7 @@ def collect_disfa_frames(raw_root: Path) -> list[tuple[Path, Path, np.ndarray, N
             au_file = au_dir / subj / f"{subj}_au{au}.txt"
             if au_file.exists():
                 with open(au_file) as f:
-                    au_seqs[au] = [float(l.strip().split(",")[-1]) for l in f if l.strip()]
+                    au_seqs[au] = [float(line.strip().split(",")[-1]) for line in f if line.strip()]
             else:
                 au_seqs[au] = []
 

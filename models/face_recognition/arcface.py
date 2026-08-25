@@ -12,12 +12,12 @@ Architecture:
 """
 
 import math
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-import numpy as np
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # iResNet blocks (identity-mapped residual as in InsightFace)
@@ -247,36 +247,45 @@ class FaceDeduplicationIndex:
     """
     FAISS flat inner-product index for face deduplication.
     Normalised embeddings turn cosine similarity into inner product.
+
+    add(vecs):           vecs is (N, dim) float32, L2-normalised
+    search(queries, k):  returns (sims, ids) each shape (N, k)
+    is_duplicate(vec):   single query, returns (bool, db_idx, sim)
     """
 
-    def __init__(self, embedding_dim: int = 512, threshold: float = 0.45):
+    def __init__(self, dim: int = 512, threshold: float = 0.45):
         import faiss
-        self.index = faiss.IndexFlatIP(embedding_dim)
+        self.index = faiss.IndexFlatIP(dim)
+        self.dim = dim
         self.threshold = threshold
-        self.id_map: list[str] = []
 
-    def add(self, embedding: np.ndarray, identity_id: str):
-        assert embedding.shape == (512,), "Embedding must be (512,)"
-        self.index.add(embedding[None].astype(np.float32))
-        self.id_map.append(identity_id)
+    def add(self, vecs: np.ndarray) -> None:
+        """Add a batch of L2-normalised vectors. vecs: (N, dim) float32."""
+        vecs = np.asarray(vecs, dtype=np.float32)
+        if vecs.ndim == 1:
+            vecs = vecs[None]
+        self.index.add(vecs)
 
-    def search(self, embedding: np.ndarray, top_k: int = 5) -> list[tuple[str, float]]:
-        distances, indices = self.index.search(
-            embedding[None].astype(np.float32), top_k
-        )
-        results = []
-        for dist, idx in zip(distances[0], indices[0]):
-            if idx == -1:
-                continue
-            results.append((self.id_map[idx], float(dist)))
-        return results
+    def search(self, queries: np.ndarray, k: int = 5) -> tuple[np.ndarray, np.ndarray]:
+        """
+        queries: (N, dim) float32
+        Returns: (sims, ids) each (N, k)
+        """
+        queries = np.asarray(queries, dtype=np.float32)
+        if queries.ndim == 1:
+            queries = queries[None]
+        sims, ids = self.index.search(queries, k)
+        return sims, ids
 
-    def is_duplicate(self, embedding: np.ndarray) -> tuple[bool, str | None, float]:
+    def is_duplicate(self, vec: np.ndarray) -> tuple[bool, int | None, float]:
+        """Single-query duplicate check. vec: (dim,) float32."""
         if self.index.ntotal == 0:
             return False, None, 0.0
-        results = self.search(embedding, top_k=1)
-        if results and results[0][1] >= self.threshold:
-            return True, results[0][0], results[0][1]
+        sims, ids = self.search(vec[None], k=1)
+        sim = float(sims[0, 0])
+        idx = int(ids[0, 0])
+        if idx >= 0 and sim >= self.threshold:
+            return True, idx, sim
         return False, None, 0.0
 
     def __len__(self) -> int:

@@ -20,16 +20,15 @@ from pathlib import Path
 
 import numpy as np
 import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
-from torch.cuda.amp import GradScaler, autocast
+import wandb
 from omegaconf import OmegaConf
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
-import wandb
+from torch.cuda.amp import GradScaler, autocast
+from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
 
-from models.liveness.depth_liveness import DepthLivenessModel, LivenessLoss
 from evaluation.metrics import compute_liveness_metrics
+from models.liveness.depth_liveness import DepthLivenessModel, LivenessLoss
 
 console = Console()
 
@@ -52,8 +51,6 @@ class LivenessDataset(Dataset):
 
     def __init__(self, root: str, image_size: int = 256, augment: bool = True):
         import torchvision.transforms as T
-        from torchvision.datasets import ImageFolder
-        from PIL import Image
 
         self.root = Path(root)
         self.image_size = image_size
@@ -111,7 +108,7 @@ class LivenessDataset(Dataset):
         labels = [s[1] for s in self.samples]
         n_live = sum(labels)
         n_spoof = len(labels) - n_live
-        weights = [1.0 / n_live if l == 1 else 1.0 / n_spoof for l in labels]
+        weights = [1.0 / n_live if lbl == 1 else 1.0 / n_spoof for lbl in labels]
         return torch.tensor(weights)
 
 

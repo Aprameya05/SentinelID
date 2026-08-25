@@ -7,15 +7,15 @@ optimal combination; Platt scaling ensures each module output is a true
 probability before fusion.
 """
 
+from dataclasses import dataclass
+from typing import Optional
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch import Tensor
-from dataclasses import dataclass, field
-from typing import Optional
-import numpy as np
 from sklearn.linear_model import LogisticRegression
-from sklearn.calibration import CalibratedClassifierCV
+from torch import Tensor
 
 
 @dataclass
@@ -48,10 +48,14 @@ class PlattCalibrator:
         self.model = LogisticRegression(C=1.0)
         self._fitted = False
 
-    def fit(self, scores: np.ndarray, labels: np.ndarray):
+    def fit(self, scores: np.ndarray, labels: np.ndarray) -> None:
         scores_2d = scores.reshape(-1, 1)
         self.model.fit(scores_2d, labels)
         self._fitted = True
+
+    def transform(self, scores: np.ndarray) -> np.ndarray:
+        """Alias for calibrate_batch — maps raw scores to calibrated probabilities."""
+        return self.calibrate_batch(scores)
 
     def calibrate(self, score: float) -> float:
         if not self._fitted:
@@ -68,32 +72,28 @@ class ScoreFusionModel(nn.Module):
     """
     MLP fusion of calibrated module scores.
 
-    Input: vector of [liveness, anti_deepfake, face_match, behavioral, document, (voice)]
-    Output: trust_score in [0, 1]
+    Input: vector of shape (B, n_modules) — one calibrated probability per module.
+    Output: (trust_score, logit) where trust_score is sigmoid output in [0,1]
+            and logit is the pre-sigmoid value.
 
-    The MLP learns which signals matter most for the overall verification decision.
-    Dropout provides uncertainty — low-confidence predictions land in REVIEW.
+    n_modules: number of score inputs (default 5: liveness, deepfake, face, au, doc)
     """
-
-    INPUT_DIMS_WITHOUT_VOICE = 5
-    INPUT_DIMS_WITH_VOICE = 6
 
     def __init__(
         self,
-        use_voice: bool = False,
+        n_modules: int = 5,
         hidden_dim: int = 64,
         dropout: float = 0.2,
         accept_threshold: float = 0.75,
         review_threshold: float = 0.45,
     ):
         super().__init__()
-        self.use_voice = use_voice
+        self.n_modules = n_modules
         self.accept_threshold = accept_threshold
         self.review_threshold = review_threshold
-        in_dim = self.INPUT_DIMS_WITH_VOICE if use_voice else self.INPUT_DIMS_WITHOUT_VOICE
 
         self.mlp = nn.Sequential(
-            nn.Linear(in_dim, hidden_dim),
+            nn.Linear(n_modules, hidden_dim),
             nn.LayerNorm(hidden_dim),
             nn.GELU(),
             nn.Dropout(dropout),
@@ -101,48 +101,53 @@ class ScoreFusionModel(nn.Module):
             nn.GELU(),
             nn.Dropout(dropout),
             nn.Linear(32, 1),
-            nn.Sigmoid(),
         )
 
         # Learnable per-module attention weights (for interpretability)
-        self.module_attn = nn.Parameter(torch.ones(in_dim) / in_dim)
+        self.module_attn = nn.Parameter(torch.ones(n_modules) / n_modules)
 
         # Calibrators (fitted separately on validation data)
         self.calibrators: dict[str, PlattCalibrator] = {}
 
-    def _build_score_vector(self, fusion_input: FusionInput) -> Tensor:
+    def _build_score_vector(self, fusion_input: "FusionInput") -> Tensor:
         def t(x):
             if isinstance(x, Tensor):
                 return x.float().flatten()[:1]
             return torch.tensor([float(x)])
 
-        # Note: deepfake_score is P(fake), so anti-deepfake is 1 - P(fake)
         scores = [
             t(fusion_input.liveness_score),
-            1.0 - t(fusion_input.deepfake_score),  # invert: P(genuine)
+            1.0 - t(fusion_input.deepfake_score),
             t(fusion_input.face_match_score),
             t(fusion_input.au_liveness_signal),
             t(fusion_input.document_score),
         ]
-        if self.use_voice and fusion_input.voice_score is not None:
+        if self.n_modules > 5 and fusion_input.voice_score is not None:
             scores.append(t(fusion_input.voice_score))
-        elif self.use_voice:
-            scores.append(torch.tensor([0.5]))  # neutral if no audio
+        elif self.n_modules > 5:
+            scores.append(torch.tensor([0.5]))
 
-        return torch.cat(scores).unsqueeze(0)  # (1, num_modules)
+        return torch.cat(scores).unsqueeze(0)
 
-    def forward(self, score_vector: Tensor) -> Tensor:
-        """score_vector: (B, num_modules) calibrated scores."""
-        # Soft attention weighting before MLP
+    def forward(self, score_vector: Tensor) -> tuple[Tensor, Tensor]:
+        """
+        score_vector: (B, n_modules) calibrated scores.
+        Returns: (trust_score, logit)
+          trust_score: (B,) in [0, 1]
+          logit:       (B,) pre-sigmoid
+        """
         attn = torch.softmax(self.module_attn, dim=0)
         weighted = score_vector * attn
-        return self.mlp(weighted)
+        logit = self.mlp(weighted).squeeze(-1)      # (B,)
+        trust_score = torch.sigmoid(logit)          # (B,)
+        return trust_score, logit
 
     @torch.inference_mode()
-    def decide(self, fusion_input: FusionInput) -> VerificationResult:
+    def decide(self, fusion_input: "FusionInput") -> VerificationResult:
         """Full verification decision from a FusionInput."""
         score_vec = self._build_score_vector(fusion_input)
-        trust_score = self.forward(score_vec).item()
+        trust_score, _ = self.forward(score_vec)
+        trust_score = trust_score.item()
 
         if trust_score >= self.accept_threshold:
             decision = "ACCEPT"
@@ -154,7 +159,7 @@ class ScoreFusionModel(nn.Module):
         # Per-module contributions via attention weights
         attn = torch.softmax(self.module_attn, dim=0).detach().cpu().numpy()
         module_names = ["liveness", "anti_deepfake", "face_match", "behavioral", "document"]
-        if self.use_voice:
+        if self.n_modules > 5:
             module_names.append("voice")
 
         scores_np = score_vec.squeeze(0).cpu().numpy()
@@ -185,16 +190,20 @@ class ScoreFusionModel(nn.Module):
 
 
 class FusionLoss(nn.Module):
-    """BCE + calibration consistency loss."""
+    """BCE on logits + confidence penalty encouraging decisive predictions."""
 
-    def forward(self, trust_score: Tensor, labels: Tensor) -> dict[str, Tensor]:
-        bce = F.binary_cross_entropy(trust_score, labels.float())
-        # Confidence penalty: push scores away from 0.5 (encourage decisiveness)
+    def __init__(self, confidence_penalty: float = 0.1):
+        super().__init__()
+        self.confidence_penalty = confidence_penalty
+
+    def forward(self, logit: Tensor, labels: Tensor, trust_score: Tensor) -> Tensor:
+        """
+        logit:       (B,) pre-sigmoid logits
+        labels:      (B,) binary float labels
+        trust_score: (B,) sigmoid(logit) — passed in to avoid recomputing
+        """
+        bce = F.binary_cross_entropy_with_logits(logit, labels.float())
+        # Penalty when model is uncertain (trust_score near 0.5)
         confidence = (trust_score - 0.5).abs().mean()
-        confidence_loss = F.relu(0.3 - confidence)  # penalise if avg confidence < 0.3
-
-        return {
-            "total": bce + 0.1 * confidence_loss,
-            "bce": bce,
-            "confidence": confidence_loss,
-        }
+        penalty = F.relu(0.3 - confidence)
+        return bce + self.confidence_penalty * penalty

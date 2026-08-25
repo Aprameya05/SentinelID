@@ -13,14 +13,13 @@ Architecture:
     -> Forgery detection head (printer artifacts, splicing, font anomalies)
 """
 
+from dataclasses import dataclass, field
+from typing import Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from dataclasses import dataclass, field
-from typing import Optional
-import numpy as np
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Spatial 2D position encoding
@@ -323,16 +322,9 @@ class DocumentIntelligenceModel(nn.Module):
         x = torch.cat([img_tokens, text_emb], dim=1)  # (B, N_img + L_text, C)
         x = self.norm(self.dropout(x))
 
-        # Build attention mask for full sequence
-        if attention_mask is not None:
-            img_mask = torch.ones(B, N_img, device=image.device)
-            full_mask = torch.cat([img_mask, attention_mask.float()], dim=1)
-            # Convert to additive mask for nn.MultiheadAttention
-            additive = (1.0 - full_mask) * -10000.0  # (B, N_total)
-            # MHA expects (N_total, N_total) or None; simplify to None here
-            attn_mask = None
-        else:
-            attn_mask = None
+        # Attention mask: MHA expects (N_total, N_total) or None.
+        # Simplify to None (all tokens attend to each other).
+        attn_mask = None
 
         # --- Transformer ---
         for layer in self.layers:
