@@ -15,24 +15,23 @@ Usage:
 """
 
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+import cv2
 import numpy as np
 import torch
-import torch.nn.functional as F
 import torchvision.transforms as T
-import cv2
 from PIL import Image
 
-from models.liveness.depth_liveness import DepthLivenessModel
-from models.deepfake.cnn_transformer import DeepfakeDetector
-from models.face_recognition.arcface import ArcFaceModel, FaceDeduplicationIndex
-from models.behavioral.au_gnn import ActionUnitGNN, GazeRegressionHead
-from models.document.layout_intelligence import DocumentIntelligenceModel, DocumentTypeClassifier
-from models.fusion.score_fusion import ScoreFusionModel, VerificationResult
 from explainability.gradcam import ScoreExplainer
+from models.behavioral.au_gnn import ActionUnitGNN, GazeRegressionHead
+from models.deepfake.cnn_transformer import DeepfakeDetector
+from models.document.layout_intelligence import DocumentIntelligenceModel, DocumentTypeClassifier
+from models.face_recognition.arcface import ArcFaceModel, FaceDeduplicationIndex
+from models.fusion.score_fusion import ScoreFusionModel, VerificationResult
+from models.liveness.depth_liveness import DepthLivenessModel
 
 # MediaPipe 468-pt -> 68-pt landmark subset
 MP_TO_68 = [

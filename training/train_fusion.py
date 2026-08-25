@@ -16,20 +16,16 @@ Run:
 """
 
 import argparse
-import time
 from pathlib import Path
 
 import numpy as np
 import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader, Dataset, TensorDataset
-from torch.cuda.amp import GradScaler, autocast
+import wandb
 from omegaconf import OmegaConf
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
-import wandb
+from torch.utils.data import DataLoader, Dataset, TensorDataset
 
-from models.fusion.score_fusion import ScoreFusionModel, FusionLoss, PlattCalibrator, FusionInput
+from models.fusion.score_fusion import FusionLoss, PlattCalibrator, ScoreFusionModel
 
 console = Console()
 

@@ -241,11 +241,11 @@ def train(cfg):
                 with autocast(enabled=cfg.project.mixed_precision):
                     outputs = model(images)
                     loss = criterion(
-                        liveness_logit=outputs["liveness_logit"],
-                        depth_pred=outputs["depth_map"],
-                        depth_gt=depth_gt,
-                        labels=liveness_labels,
-                        has_depth=has_depth.to(device),
+                        outputs["liveness_logit"],
+                        outputs["depth_map"],
+                        depth_gt,
+                        liveness_labels,
+                        has_depth.to(device),
                     )
 
                 scaler.scale(loss).backward()

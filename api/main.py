@@ -11,23 +11,23 @@ Endpoints:
 """
 
 import time
-import io
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
-from contextlib import asynccontextmanager
 
-import numpy as np
-from fastapi import FastAPI, File, UploadFile, HTTPException, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 import cv2
+import numpy as np
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 
 from api.schemas import (
-    VerifyResponse, LivenessResponse, FaceMatchResponse,
-    DocumentResponse, HealthResponse, MetricsResponse,
+    FaceMatchResponse,
+    HealthResponse,
+    LivenessResponse,
+    MetricsResponse,
+    VerifyResponse,
 )
-from inference.pipeline import SentinelPipeline, PipelineConfig
-
+from inference.pipeline import PipelineConfig, SentinelPipeline
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Globals
@@ -119,7 +119,7 @@ async def verify(
         doc_arr = np.frombuffer(doc_data, np.uint8)
         doc_img = cv2.imdecode(doc_arr, cv2.IMREAD_COLOR)
         # Save temp file for pipeline
-        import tempfile, os
+        import tempfile
         tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
         cv2.imwrite(tmp.name, doc_img)
         doc_path = tmp.name

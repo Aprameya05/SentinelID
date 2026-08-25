@@ -13,12 +13,13 @@ Architecture:
   - BerHu loss for depth, BCE for liveness, contrastive loss across spoof types
 """
 
+from typing import NamedTuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from torchvision.models import resnet50, ResNet50_Weights
-from typing import NamedTuple
+from torchvision.models import ResNet50_Weights, resnet50
 
 
 class LivenessOutput(NamedTuple):
@@ -114,7 +115,7 @@ class DepthLivenessModel(nn.Module):
       - embedding: 512-d shared representation for downstream fusion
     """
 
-    def __init__(self, pretrained: bool = True, dropout: float = 0.3):
+    def __init__(self, pretrained: bool = True, dropout: float = 0.3, backbone: str = "resnet50"):
         super().__init__()
         weights = ResNet50_Weights.IMAGENET1K_V2 if pretrained else None
         backbone = resnet50(weights=weights)
@@ -143,7 +144,7 @@ class DepthLivenessModel(nn.Module):
         c5 = self.layer4(c4)  # (B, 2048, 7, 7)
         return {"c2": c2, "c3": c3, "c4": c4, "c5": c5}
 
-    def forward(self, images: Tensor) -> LivenessOutput:
+    def forward(self, images: Tensor) -> dict[str, Tensor]:
         B, C, H, W = images.shape
         features = self._extract_features(images)
 
@@ -157,11 +158,12 @@ class DepthLivenessModel(nn.Module):
         # Shared embedding for fusion
         embedding = self.embedding_proj(pooled)
 
-        return LivenessOutput(
-            liveness_score=liveness_score,
-            depth_map=depth_map,
-            embedding=embedding,
-        )
+        return {
+            "liveness_logit": liveness_logit,   # (B,) raw logit
+            "liveness_score": liveness_score,   # (B,) in [0, 1]
+            "depth_map": depth_map,             # (B, 1, H, W)
+            "embedding": embedding,             # (B, 512)
+        }
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -178,7 +180,7 @@ class BerHuLoss(nn.Module):
     def forward(self, pred: Tensor, target: Tensor, mask: Tensor | None = None) -> Tensor:
         diff = torch.abs(pred - target)
         if mask is not None:
-            diff = diff[mask]
+            diff = diff[mask.bool()]
         c = 0.2 * diff.max().detach()
         berhu = torch.where(diff <= c, diff, (diff.pow(2) + c.pow(2)) / (2 * c))
         return berhu.mean()
@@ -201,38 +203,32 @@ class LivenessLoss(nn.Module):
 
     def forward(
         self,
-        output: LivenessOutput,
+        liveness_logit: Tensor,
+        depth_pred: Tensor,
+        depth_gt: Tensor,
         liveness_labels: Tensor,
-        depth_targets: Tensor | None = None,
-    ) -> dict[str, Tensor]:
-        liveness_loss = F.binary_cross_entropy(
-            output.liveness_score, liveness_labels.float()
+        has_depth: Tensor | None = None,
+    ) -> Tensor:
+        """
+        liveness_logit: (B,) raw logits (pre-sigmoid)
+        depth_pred:     (B, 1, H, W)
+        depth_gt:       (B, 1, H, W)
+        liveness_labels:(B,) float 0/1
+        has_depth:      (B,) float mask — which samples have valid depth GT
+        """
+        liveness_loss = F.binary_cross_entropy_with_logits(
+            liveness_logit, liveness_labels.float()
         )
 
-        depth_loss = torch.tensor(0.0, device=liveness_labels.device)
-        if depth_targets is not None:
-            depth_loss = self.berhu(output.depth_map, depth_targets)
-
-        # Contrastive: live embeddings should cluster, spoof should be far
-        live_mask = liveness_labels == 1
-        spoof_mask = liveness_labels == 0
-        contrast_loss = torch.tensor(0.0, device=liveness_labels.device)
-        if live_mask.sum() > 1 and spoof_mask.sum() > 0:
-            live_embs = F.normalize(output.embedding[live_mask], dim=1)
-            spoof_embs = F.normalize(output.embedding[spoof_mask], dim=1)
-            pos_sim = (live_embs @ live_embs.T).mean()
-            neg_sim = (live_embs @ spoof_embs.T).mean()
-            contrast_loss = F.relu(neg_sim - pos_sim + 0.5)
+        depth_loss = torch.tensor(0.0, device=liveness_logit.device)
+        if has_depth is not None and has_depth.sum() > 0:
+            mask = has_depth.bool()
+            depth_loss = self.berhu(depth_pred[mask], depth_gt[mask])
+        elif has_depth is None:
+            depth_loss = self.berhu(depth_pred, depth_gt)
 
         total = (
             self.w_live * liveness_loss
             + self.w_depth * depth_loss
-            + self.w_contrast * contrast_loss
         )
-
-        return {
-            "total": total,
-            "liveness": liveness_loss,
-            "depth": depth_loss,
-            "contrastive": contrast_loss,
-        }
+        return total

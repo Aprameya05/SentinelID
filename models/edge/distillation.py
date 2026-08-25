@@ -15,12 +15,13 @@ Distillation strategy:
 Target: MobileNetV3-Large at INT8 < 200ms on Snapdragon 778G
 """
 
+from typing import NamedTuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from torchvision.models import mobilenet_v3_large, MobileNet_V3_Large_Weights
-from typing import NamedTuple
+from torchvision.models import MobileNet_V3_Large_Weights, mobilenet_v3_large
 
 
 class StudentOutput(NamedTuple):

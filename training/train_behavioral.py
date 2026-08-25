@@ -21,14 +21,14 @@ from pathlib import Path
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, Dataset
-from torch.cuda.amp import GradScaler, autocast
+import wandb
 from omegaconf import OmegaConf
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
-import wandb
+from torch.cuda.amp import GradScaler, autocast
+from torch.utils.data import DataLoader, Dataset
 
-from models.behavioral.au_gnn import ActionUnitGNN, GazeRegressionHead, AULoss
+from models.behavioral.au_gnn import ActionUnitGNN, AULoss, GazeRegressionHead
 
 console = Console()
 

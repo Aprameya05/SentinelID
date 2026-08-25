@@ -4,10 +4,8 @@ Runs forward passes with random input on CPU — no GPU or dataset required.
 Tests catch import errors, shape mismatches, and obvious logic bugs.
 """
 
-import pytest
-import torch
 import numpy as np
-
+import torch
 
 DEVICE = torch.device("cpu")
 

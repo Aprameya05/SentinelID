@@ -18,19 +18,17 @@ Run:
 import argparse
 import time
 from pathlib import Path
-from functools import partial
 
 import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader, ConcatDataset
-from torch.cuda.amp import GradScaler, autocast
+import wandb
 from omegaconf import OmegaConf
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
-import wandb
+from torch.cuda.amp import GradScaler, autocast
+from torch.utils.data import ConcatDataset, DataLoader
 
-from models.document.layout_intelligence import DocumentIntelligenceModel, DocumentLoss
 from data.datasets.document import MIDV500Dataset, MIDV2020Dataset
+from models.document.layout_intelligence import DocumentIntelligenceModel, DocumentLoss
 
 console = Console()
 

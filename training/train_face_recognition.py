@@ -10,18 +10,16 @@ Run:
 """
 
 import argparse
-import os
 import time
 from pathlib import Path
 
 import torch
-import torch.distributed as dist
-from torch.utils.data import DataLoader, ConcatDataset
-from torch.cuda.amp import GradScaler, autocast
+import wandb
 from omegaconf import OmegaConf
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
-import wandb
+from torch.cuda.amp import GradScaler, autocast
+from torch.utils.data import ConcatDataset, DataLoader
 
 from models.face_recognition.arcface import ArcFaceModel
 
@@ -69,8 +67,8 @@ def build_transform(image_size: int = 112):
 @torch.inference_mode()
 def eval_lfw(model: ArcFaceModel, lfw_root: str, device: torch.device) -> dict[str, float]:
     """Evaluate on LFW pairs. Returns TAR@FAR=1e-3 and verification AUC."""
-    from sklearn.metrics import roc_auc_score, roc_curve
     import numpy as np
+    from sklearn.metrics import roc_auc_score, roc_curve
 
     lfw_path = Path(lfw_root)
     pairs_file = lfw_path / "pairs.txt"

@@ -8,12 +8,12 @@ Reference: "Grad-CAM: Visual Explanations from Deep Networks via Gradient-based
 Localization" (Selvaraju et al., ICCV 2017)
 """
 
+
+import cv2
+import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import Tensor
-import numpy as np
-import cv2
-from typing import Callable
 
 
 class GradCAM:

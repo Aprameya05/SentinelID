@@ -15,12 +15,12 @@ Reference: "Thinking in Frequency: Face Forgery Detection by Mining Frequency-aw
 Clues" (Li et al., ECCV 2021)
 """
 
+from typing import NamedTuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-import numpy as np
-from typing import NamedTuple
 
 try:
     import timm
@@ -164,7 +164,7 @@ class DeepfakeDetector(nn.Module):
             spatial_feat_dim = self.spatial_backbone.num_features  # 1792
         else:
             # Fallback: ResNet-50
-            from torchvision.models import resnet50, ResNet50_Weights
+            from torchvision.models import ResNet50_Weights, resnet50
             weights = ResNet50_Weights.IMAGENET1K_V2 if pretrained else None
             backbone = resnet50(weights=weights)
             self.spatial_backbone = nn.Sequential(*list(backbone.children())[:-1])
@@ -193,7 +193,8 @@ class DeepfakeDetector(nn.Module):
             nn.Linear(128, 1),
         )
 
-    def forward(self, images: Tensor) -> DeepfakeOutput:
+    def forward(self, images: Tensor) -> Tensor:
+        """Returns fake_score logit (B,) — apply sigmoid for probability."""
         # Spatial branch
         spatial_raw = self.spatial_backbone(images)
         if spatial_raw.dim() > 2:
@@ -206,16 +207,9 @@ class DeepfakeDetector(nn.Module):
         # Cross-attention fusion
         fused = self.fusion(spatial_feat, freq_feat)
 
-        # Fake score
+        # Logit (B,)
         logit = self.classifier(fused).squeeze(1)
-        fake_score = torch.sigmoid(logit)
-
-        return DeepfakeOutput(
-            fake_score=fake_score,
-            spatial_feat=spatial_feat,
-            frequency_feat=freq_feat,
-            fused_feat=fused,
-        )
+        return logit
 
 
 class DeepfakeLoss(nn.Module):
@@ -226,13 +220,18 @@ class DeepfakeLoss(nn.Module):
         self.gamma = gamma
         self.alpha = alpha
 
-    def forward(self, output: DeepfakeOutput, labels: Tensor) -> dict[str, Tensor]:
-        p = output.fake_score
+    def forward(self, logits: Tensor, labels: Tensor) -> Tensor:
+        """
+        logits: (B,) raw model output (pre-sigmoid)
+        labels: (B,) float 0/1
+        Returns scalar focal loss.
+        """
         labels = labels.float()
+        p = torch.sigmoid(logits)
 
-        bce = F.binary_cross_entropy(p, labels, reduction="none")
+        bce = F.binary_cross_entropy_with_logits(logits, labels, reduction="none")
         pt = torch.where(labels == 1, p, 1 - p)
         alpha_t = torch.where(labels == 1, self.alpha, 1 - self.alpha)
         focal = alpha_t * (1 - pt).pow(self.gamma) * bce
 
-        return {"total": focal.mean(), "bce": bce.mean()}
+        return focal.mean()

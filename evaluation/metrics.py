@@ -6,10 +6,10 @@ AUC, EER, TAR@FAR for face recognition and deepfake detection.
 Per-demographic FMR/FNMR for bias auditing.
 """
 
+from dataclasses import dataclass
+
 import numpy as np
 from sklearn.metrics import roc_auc_score, roc_curve
-from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -135,8 +135,8 @@ def audit_demographic_fairness(
 
 
 def print_fairness_report(reports: list[DemographicFairnessReport]):
-    from rich.table import Table
     from rich.console import Console
+    from rich.table import Table
     console = Console()
 
     table = Table(title="Demographic Fairness Audit")

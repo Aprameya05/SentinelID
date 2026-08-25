@@ -18,20 +18,19 @@ import argparse
 import time
 from pathlib import Path
 
-import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, ConcatDataset
-from torch.cuda.amp import GradScaler, autocast
+import wandb
 from omegaconf import OmegaConf
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
-import wandb
+from torch.cuda.amp import GradScaler, autocast
+from torch.utils.data import ConcatDataset, DataLoader
 
-from models.edge.distillation import SentinelEdgeModel, DistillationLoss, EdgeDistiller
-from models.liveness.depth_liveness import DepthLivenessModel
-from models.face_recognition.arcface import ArcFaceModel
 from models.behavioral.au_gnn import ActionUnitGNN
+from models.edge.distillation import DistillationLoss, EdgeDistiller, SentinelEdgeModel
+from models.face_recognition.arcface import ArcFaceModel
+from models.liveness.depth_liveness import DepthLivenessModel
 
 console = Console()
 
@@ -97,8 +96,9 @@ class DistillDataset(torch.utils.data.Dataset):
     """
 
     def __init__(self, root: str, image_size: int = 256, augment: bool = True):
-        import torchvision.transforms as T
         from pathlib import Path
+
+        import torchvision.transforms as T
 
         self.root = Path(root)
         self.image_size = image_size

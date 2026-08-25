@@ -7,13 +7,10 @@ This script handles the rest automatically.
 """
 
 import argparse
-import os
-import sys
-import zipfile
 import tarfile
 from pathlib import Path
+
 from rich.console import Console
-from rich.progress import Progress, DownloadColumn, TransferSpeedColumn
 
 console = Console()
 
@@ -140,7 +137,7 @@ def main():
         console.print(f"  {info['description']}")
 
         if info["manual"]:
-            console.print(f"  [yellow]Manual download required:[/yellow]")
+            console.print("  [yellow]Manual download required:[/yellow]")
             console.print(f"  URL:  {info['url']}")
             console.print(f"  Note: {info.get('note', '')}")
             console.print(f"  Place data in: {info['target_dir']}")
