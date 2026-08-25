@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SentinelID — Live Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&family=Plus+Jakarta+Sans:wght@300;400;500&display=swap">
+<style>
+:root {
+  --bg: #03060D;
+  --surface: #080F1C;
+  --surface2: #0D1828;
+  --border: #112038;
+  --text: #C8D8F0;
+  --muted: #4A6080;
+  --accent: #1E6BFF;
+  --accent-glow: rgba(30,107,255,0.35);
+  --signal: #F5A623;
+  --positive: #00D68F;
+  --negative: #FF3B5C;
+  --grid: rgba(30,107,255,0.04);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: 52px 1fr;
+  grid-template-columns: 1fr;
+}
+
+/* ── GRID BACKGROUND ─────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── TOPBAR ──────────────────────────────────────── */
+.topbar {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(3,6,13,0.95);
+  backdrop-filter: blur(12px);
+}
+.topbar-left { display: flex; align-items: center; gap: 12px; }
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: -0.03em;
+  color: #fff;
+}
+.logo .acc { color: var(--accent); }
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--positive);
+  box-shadow: 0 0 8px var(--positive);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+.status-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--positive);
+}
+.topbar-right { display: flex; align-items: center; gap: 16px; }
+.topbar-stat {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+}
+.topbar-stat span { color: var(--text); }
+
+/* ── MAIN LAYOUT ─────────────────────────────────── */
+.main {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 320px 1fr 300px;
+  gap: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── PANELS ──────────────────────────────────────── */
+.panel {
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.panel:last-child { border-right: none; border-left: 1px solid var(--border); }
+.panel-header {
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.panel-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.panel-body { flex: 1; overflow-y: auto; padding: 16px; }
+.panel-body::-webkit-scrollbar { width: 3px; }
+.panel-body::-webkit-scrollbar-track { background: transparent; }
+.panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ── CENTER CANVAS ───────────────────────────────── */
+.canvas-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  gap: 20px;
+  padding: 24px;
+  background: var(--surface);
+}
+
+/* Face scan viewport */
+.scan-viewport {
+  position: relative;
+  width: 320px;
+  height: 320px;
+}
+#videoEl, #canvasEl {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
+}
+#canvasEl { z-index: 2; }
+
+/* Corner brackets */
+.bracket {
+  position: absolute;
+  width: 32px; height: 32px;
+  border-color: var(--accent);
+  border-style: solid;
+  z-index: 3;
+}
+.bracket.tl { top: 8px; left: 8px; border-width: 2px 0 0 2px; }
+.bracket.tr { top: 8px; right: 8px; border-width: 2px 2px 0 0; }
+.bracket.bl { bottom: 8px; left: 8px; border-width: 0 0 2px 2px; }
+.bracket.br { bottom: 8px; right: 8px; border-width: 0 2px 2px 0; }
+
+/* Scan line */
+.scan-line {
+  position: absolute;
+  left: 12px; right: 12px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  z-index: 4;
+  animation: scan 2.4s ease-in-out infinite;
+  box-shadow: 0 0 12px var(--accent);
+}
+@keyframes scan {
+  0% { top: 12px; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: calc(100% - 12px); opacity: 0; }
+}
+.scan-viewport.verified .scan-line { display: none; }
+.scan-viewport.verified .bracket { border-color: var(--positive); }
+
+/* Decision badge */
+.decision-badge {
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 8px 24px;
+  border-radius: 4px;
+  border: 1px solid;
+  background: transparent;
+  transition: all 0.3s;
+}
+.decision-badge.accept { color: var(--positive); border-color: var(--positive); background: rgba(0,214,143,0.08); }
+.decision-badge.review { color: var(--signal); border-color: var(--signal); background: rgba(245,166,35,0.08); }
+.decision-badge.reject { color: var(--negative); border-color: var(--negative); background: rgba(255,59,92,0.08); }
+.decision-badge.idle   { color: var(--muted); border-color: var(--border); }
+
+/* Trust score ring */
+.trust-ring-wrap { position: relative; width: 88px; height: 88px; }
+#trustRing { position: absolute; top: 0; left: 0; }
+.trust-val {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.trust-val .num {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+}
+.trust-val .lbl {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+/* Controls */
+.controls { display: flex; gap: 10px; }
+.btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 8px 18px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn.primary { border-color: var(--accent); background: rgba(30,107,255,0.12); color: var(--accent); }
+.btn.primary:hover { background: rgba(30,107,255,0.22); }
+
+/* ── LEFT PANEL: MODULE SCORES ───────────────────── */
+.module-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.module-row:last-child { border-bottom: none; }
+.module-icon {
+  width: 32px; height: 32px;
+  border-radius: 6px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.module-info { flex: 1; }
+.module-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+.module-bar-track {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.module-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.module-score {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text);
+  width: 36px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── RIGHT PANEL: LOG ────────────────────────────── */
+.log-line {
+  display: flex;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(17,32,56,0.6);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.log-line:last-child { border-bottom: none; }
+.log-time { color: var(--muted); flex-shrink: 0; }
+.log-msg { color: var(--text); }
+.log-msg.ok { color: var(--positive); }
+.log-msg.warn { color: var(--signal); }
+.log-msg.err { color: var(--negative); }
+.log-msg.info { color: var(--accent); }
+
+/* ── DEPTH MAP OVERLAY ───────────────────────────── */
+.depth-strip {
+  width: 100%;
+  margin-top: 12px;
+}
+.depth-strip label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 6px;
+}
+#depthCanvas {
+  width: 100%;
+  height: 80px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+}
+
+/* ── BOTTOM STATUS BAR ───────────────────────────── */
+.status-bar {
+  position: absolute;
+  bottom: 16px;
+  left: 0; right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+}
+.stat-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 12px;
+}
+.stat-chip .k {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.stat-chip .v {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── UPLOAD ZONE ─────────────────────────────────── */
+.upload-zone {
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  margin-bottom: 12px;
+}
+.upload-zone:hover { border-color: var(--accent); background: rgba(30,107,255,0.04); }
+.upload-zone p { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.upload-zone .icon { font-size: 20px; }
+#uploadInput { display: none; }
+
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="logo"><span class="acc">Sentinel</span>ID</div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <div class="status-dot"></div>
+      <span class="status-label" id="statusLabel">System Ready</span>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-stat">API <span id="apiLatency">--</span>ms</div>
+    <div class="topbar-stat">Checks <span id="checkCount">0</span></div>
+    <div class="topbar-stat">Model <span>SentinelID v1.0</span></div>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- LEFT PANEL: Module scores -->
+  <aside class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Module Outputs</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);" id="moduleTs">--</span>
+    </div>
+    <div class="panel-body" id="modulePanel">
+      <!-- Populated by JS -->
+    </div>
+  </aside>
+
+  <!-- CENTER: Camera + controls -->
+  <section class="canvas-panel">
+    <div style="display:flex;align-items:center;gap:20px;">
+      <!-- Trust score ring -->
+      <div class="trust-ring-wrap">
+        <canvas id="trustRing" width="88" height="88"></canvas>
+        <div class="trust-val">
+          <div class="num" id="trustNum">--</div>
+          <div class="lbl">Trust</div>
+        </div>
+      </div>
+
+      <!-- Decision badge -->
+      <div>
+        <div class="decision-badge idle" id="decisionBadge">Awaiting Scan</div>
+        <div style="margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-align:center;" id="decisionSub">Upload or use camera</div>
+      </div>
+    </div>
+
+    <!-- Scan viewport -->
+    <div class="scan-viewport" id="scanViewport">
+      <video id="videoEl" autoplay muted playsinline></video>
+      <canvas id="canvasEl" width="320" height="320"></canvas>
+      <div class="bracket tl"></div>
+      <div class="bracket tr"></div>
+      <div class="bracket bl"></div>
+      <div class="bracket br"></div>
+      <div class="scan-line" id="scanLine"></div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <button class="btn" id="btnCamera">Start Camera</button>
+      <button class="btn primary" id="btnVerify">Verify</button>
+      <button class="btn" id="btnReset">Reset</button>
+    </div>
+
+    <!-- Upload zone -->
+    <div class="upload-zone" onclick="document.getElementById('uploadInput').click()">
+      <div class="icon">📂</div>
+      <p>Drop a selfie or ID document here</p>
+      <input type="file" id="uploadInput" accept="image/*">
+    </div>
+
+    <!-- Bottom stat chips -->
+    <div class="status-bar">
+      <div class="stat-chip"><span class="k">Liveness</span><span class="v" id="chipLive">--</span></div>
+      <div class="stat-chip"><span class="k">Deepfake</span><span class="v" id="chipDF">--</span></div>
+      <div class="stat-chip"><span class="k">Latency</span><span class="v" id="chipLat">--ms</span></div>
+    </div>
+  </section>
+
+  <!-- RIGHT PANEL: Log -->
+  <aside class="panel" style="border-left:1px solid var(--border);">
+    <div class="panel-header">
+      <span class="panel-title">Pipeline Log</span>
+      <button onclick="clearLog()" style="background:none;border:none;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);">clear</button>
+    </div>
+    <div class="panel-body" id="logPanel"></div>
+
+    <!-- Depth map -->
+    <div style="padding:12px 16px;border-top:1px solid var(--border);">
+      <div class="depth-strip">
+        <label>Depth Map (Liveness Module)</label>
+        <canvas id="depthCanvas" width="268" height="80"></canvas>
+      </div>
+    </div>
+  </aside>
+
+</main>
+
+<script>
+// ─── STATE ──────────────────────────────────────────────────
+let videoStream = null;
+let verifying = false;
+let checkCount = 0;
+let uploadedImage = null;
+
+// ─── MODULE DEFINITIONS ──────────────────────────────────────
+const MODULES = [
+  { id: "liveness",  icon: "👁",  name: "3D Liveness",      color: "#1E6BFF" },
+  { id: "deepfake",  icon: "🤖",  name: "Deepfake Det.",     color: "#1E6BFF" },
+  { id: "face",      icon: "🎭",  name: "Face Match",        color: "#00D68F" },
+  { id: "behavioral",icon: "🧠",  name: "Behavioral AU",     color: "#00D68F" },
+  { id: "document",  icon: "📄",  name: "Document Intel.",   color: "#F5A623" },
+  { id: "fusion",    icon: "⚡",  name: "Score Fusion",      color: "#F5A623" },
+];
+
+let moduleScores = {};
+MODULES.forEach(m => moduleScores[m.id] = null);
+
+// ─── INIT MODULES PANEL ──────────────────────────────────────
+function initModulePanel() {
+  const panel = document.getElementById("modulePanel");
+  panel.innerHTML = MODULES.map(m => `
+    <div class="module-row">
+      <div class="module-icon">${m.icon}</div>
+      <div class="module-info">
+        <div class="module-name">${m.name}</div>
+        <div class="module-bar-track">
+          <div class="module-bar-fill" id="bar-${m.id}"
+               style="width:0%;background:${m.color};"></div>
+        </div>
+      </div>
+      <div class="module-score" id="score-${m.id}">--</div>
+    </div>
+  `).join("");
+}
+
+function setModuleScore(id, value) {
+  moduleScores[id] = value;
+  const pct = Math.round(value * 100);
+  const bar = document.getElementById(`bar-${id}`);
+  const score = document.getElementById(`score-${id}`);
+  if (bar) bar.style.width = `${pct}%`;
+  if (score) score.textContent = `${pct}%`;
+}
+
+function resetModules() {
+  MODULES.forEach(m => {
+    const bar = document.getElementById(`bar-${m.id}`);
+    const score = document.getElementById(`score-${m.id}`);
+    if (bar) bar.style.width = "0%";
+    if (score) score.textContent = "--";
+    moduleScores[m.id] = null;
+  });
+}
+
+// ─── LOG ─────────────────────────────────────────────────────
+function log(msg, type = "info") {
+  const panel = document.getElementById("logPanel");
+  const now = new Date();
+  const ts = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}:${String(now.getSeconds()).padStart(2,"0")}`;
+  const div = document.createElement("div");
+  div.className = "log-line";
+  div.innerHTML = `<span class="log-time">${ts}</span><span class="log-msg ${type}">${msg}</span>`;
+  panel.insertBefore(div, panel.firstChild);
+  if (panel.children.length > 80) panel.removeChild(panel.lastChild);
+}
+
+function clearLog() {
+  document.getElementById("logPanel").innerHTML = "";
+}
+
+// ─── TRUST RING ───────────────────────────────────────────────
+function drawTrustRing(score) {
+  const canvas = document.getElementById("trustRing");
+  const ctx = canvas.getContext("2d");
+  const W = 88, H = 88, cx = W/2, cy = H/2, r = 36;
+  ctx.clearRect(0, 0, W, H);
+
+  // Track
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.strokeStyle = "#112038";
+  ctx.lineWidth = 5;
+  ctx.stroke();
+
+  if (score === null) return;
+
+  // Value arc
+  const angle = (score * 2 * Math.PI) - Math.PI / 2;
+  const color = score >= 0.75 ? "#00D68F" : score >= 0.45 ? "#F5A623" : "#FF3B5C";
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, -Math.PI / 2, angle);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 5;
+  ctx.lineCap = "round";
+  ctx.stroke();
+
+  // Glow
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, -Math.PI / 2, angle);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 10;
+  ctx.globalAlpha = 0.15;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // Update text
+  document.getElementById("trustNum").textContent = Math.round(score * 100);
+}
+
+// ─── DEPTH MAP VISUALISER ──────────────────────────────────────
+function drawDepthMap(data) {
+  const canvas = document.getElementById("depthCanvas");
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // Simulate depth gradient (in production, use real depth map from model)
+  const gradient = ctx.createLinearGradient(0, 0, W, 0);
+  if (data && data.isLive) {
+    // Live face: plausible depth gradient (center closer)
+    gradient.addColorStop(0.0, "#0D2040");
+    gradient.addColorStop(0.35, "#1A4080");
+    gradient.addColorStop(0.5, "#2060C0");
+    gradient.addColorStop(0.65, "#1A4080");
+    gradient.addColorStop(1.0, "#0D2040");
+  } else {
+    // Flat / spoof: uniform depth
+    gradient.addColorStop(0, "#101820");
+    gradient.addColorStop(1, "#101820");
+  }
+
+  // Draw fake heatmap
+  for (let x = 0; x < W; x++) {
+    const t = x / W;
+    // Add noise
+    const noise = (Math.random() - 0.5) * 6;
+    const centerBias = -Math.pow(t - 0.5, 2) * 80 + 20;
+    const depth = (data && data.isLive) ? 60 + centerBias + noise : 20 + noise;
+    ctx.fillStyle = `hsl(${200 + depth * 0.3}, 60%, ${10 + depth * 0.4}%)`;
+    ctx.fillRect(x, 0, 1, H);
+  }
+
+  // Overlay label
+  ctx.fillStyle = "rgba(0,0,0,0.6)";
+  ctx.fillRect(0, H - 16, W, 16);
+  ctx.fillStyle = data && data.isLive ? "#00D68F" : "#FF3B5C";
+  ctx.font = "9px JetBrains Mono, monospace";
+  ctx.fillText(data && data.isLive ? "3D DEPTH VARIANCE: HIGH (LIVE)" : "3D DEPTH VARIANCE: FLAT (SPOOF)", 6, H - 5);
+}
+
+// ─── SIMULATE VERIFICATION ─────────────────────────────────────
+async function runVerification() {
+  if (verifying) return;
+  verifying = true;
+  const t0 = performance.now();
+
+  document.getElementById("decisionBadge").className = "decision-badge idle";
+  document.getElementById("decisionBadge").textContent = "Analyzing...";
+  document.getElementById("decisionSub").textContent = "Running 7-module pipeline";
+  document.getElementById("statusLabel").textContent = "Verifying";
+  resetModules();
+  drawTrustRing(null);
+
+  log("Pipeline started", "info");
+  log("Preprocessing selfie (224x224, IMAGENET norm)", "info");
+
+  // Simulate module outputs with staggered timing
+  const mockScores = {
+    liveness: 0.91 + (Math.random() - 0.5) * 0.12,
+    deepfake: 0.07 + Math.random() * 0.06,  // P(fake) — low = good
+    face:     0.88 + Math.random() * 0.08,
+    behavioral: 0.82 + Math.random() * 0.1,
+    document: 0.94 + Math.random() * 0.05,
+    fusion:   0.0,
+  };
+
+  const steps = [
+    { id: "liveness", delay: 300,  val: mockScores.liveness,  label: "Liveness", invert: false },
+    { id: "deepfake", delay: 550,  val: 1 - mockScores.deepfake, label: "Anti-deepfake", invert: false },
+    { id: "face",     delay: 750,  val: mockScores.face,        label: "Face match", invert: false },
+    { id: "behavioral", delay: 900, val: mockScores.behavioral,  label: "Behavioral", invert: false },
+    { id: "document", delay: 1050, val: mockScores.document,    label: "Document", invert: false },
+  ];
+
+  for (const step of steps) {
+    await new Promise(r => setTimeout(r, step.delay));
+    setModuleScore(step.id, step.val);
+    log(`[M${steps.indexOf(step)+1}] ${step.label}: ${Math.round(step.val*100)}%`, step.val > 0.7 ? "ok" : step.val > 0.5 ? "warn" : "err");
+  }
+
+  // Fusion
+  await new Promise(r => setTimeout(r, 1250));
+  const trust = (mockScores.liveness * 0.22 + (1-mockScores.deepfake) * 0.2 +
+    mockScores.face * 0.22 + mockScores.behavioral * 0.18 + mockScores.document * 0.18);
+  mockScores.fusion = trust;
+  setModuleScore("fusion", trust);
+  log(`[M6] Fusion score: ${Math.round(trust*100)}%`, trust > 0.75 ? "ok" : "warn");
+
+  const latency = Math.round(performance.now() - t0);
+  checkCount++;
+  document.getElementById("checkCount").textContent = checkCount;
+  document.getElementById("apiLatency").textContent = latency;
+  document.getElementById("chipLat").textContent = `${latency}ms`;
+  document.getElementById("chipLive").textContent = `${Math.round(mockScores.liveness*100)}%`;
+  document.getElementById("chipDF").textContent = `${Math.round(mockScores.deepfake*100)}%`;
+  document.getElementById("moduleTs").textContent = new Date().toLocaleTimeString();
+
+  // Decision
+  let decision, cls;
+  if (trust >= 0.75)       { decision = "ACCEPT"; cls = "accept"; }
+  else if (trust >= 0.45)  { decision = "REVIEW"; cls = "review"; }
+  else                     { decision = "REJECT"; cls = "reject"; }
+
+  drawTrustRing(trust);
+  const badge = document.getElementById("decisionBadge");
+  badge.className = `decision-badge ${cls}`;
+  badge.textContent = decision;
+  document.getElementById("decisionSub").textContent = `Trust: ${Math.round(trust*100)}% | ${latency}ms`;
+  document.getElementById("statusLabel").textContent = decision;
+
+  if (decision === "ACCEPT") {
+    document.getElementById("scanViewport").classList.add("verified");
+    log(`ACCEPT — trust ${Math.round(trust*100)}%`, "ok");
+  } else {
+    document.getElementById("scanViewport").classList.remove("verified");
+    log(`${decision} — trust ${Math.round(trust*100)}%`, decision === "REVIEW" ? "warn" : "err");
+  }
+
+  drawDepthMap({ isLive: mockScores.liveness > 0.6 });
+  verifying = false;
+}
+
+// ─── CAMERA ──────────────────────────────────────────────────
+async function startCamera() {
+  try {
+    videoStream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 320, facingMode: "user" } });
+    document.getElementById("videoEl").srcObject = videoStream;
+    document.getElementById("btnCamera").textContent = "Stop Camera";
+    log("Camera active", "ok");
+  } catch (e) {
+    log(`Camera error: ${e.message}`, "err");
+  }
+}
+
+function stopCamera() {
+  if (videoStream) {
+    videoStream.getTracks().forEach(t => t.stop());
+    videoStream = null;
+    document.getElementById("videoEl").srcObject = null;
+    document.getElementById("btnCamera").textContent = "Start Camera";
+    log("Camera stopped", "info");
+  }
+}
+
+// ─── EVENTS ──────────────────────────────────────────────────
+document.getElementById("btnCamera").addEventListener("click", () => {
+  if (videoStream) stopCamera(); else startCamera();
+});
+
+document.getElementById("btnVerify").addEventListener("click", runVerification);
+
+document.getElementById("btnReset").addEventListener("click", () => {
+  resetModules();
+  drawTrustRing(null);
+  drawDepthMap(null);
+  document.getElementById("decisionBadge").className = "decision-badge idle";
+  document.getElementById("decisionBadge").textContent = "Awaiting Scan";
+  document.getElementById("decisionSub").textContent = "Upload or use camera";
+  document.getElementById("scanViewport").classList.remove("verified");
+  document.getElementById("trustNum").textContent = "--";
+  document.getElementById("chipLive").textContent = "--";
+  document.getElementById("chipDF").textContent = "--";
+  document.getElementById("chipLat").textContent = "--ms";
+  log("Reset", "info");
+});
+
+document.getElementById("uploadInput").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = document.getElementById("canvasEl");
+    const ctx = img.getContext("2d");
+    const image = new Image();
+    image.onload = () => {
+      ctx.clearRect(0, 0, 320, 320);
+      ctx.drawImage(image, 0, 0, 320, 320);
+      log(`Image loaded: ${file.name}`, "info");
+    };
+    image.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+// ─── INIT ─────────────────────────────────────────────────────
+initModulePanel();
+drawTrustRing(null);
+drawDepthMap(null);
+log("SentinelID v1.0 initialised", "ok");
+log("7 modules loaded", "info");
+log("Awaiting input", "info");
+</script>
+</body>
+</html>

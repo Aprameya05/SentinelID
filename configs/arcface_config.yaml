@@ -1,0 +1,49 @@
+defaults:
+  - base_config
+
+model:
+  backbone: "resnet100"
+  embedding_dim: 512
+  pretrained: true
+
+loss:
+  type: "arcface"
+  scale: 64.0
+  margin: 0.5
+  easy_margin: false
+
+training:
+  epochs: 40
+  batch_size: 512
+  optimizer: "sgd"
+  lr: 0.1
+  momentum: 0.9
+  weight_decay: 5e-4
+  lr_scheduler: "cosine"
+  warmup_epochs: 5
+
+data:
+  datasets:
+    - name: "ms_celeb"
+      root: "data/raw/ms-celeb-1m"
+      weight: 0.5
+    - name: "vggface2"
+      root: "data/raw/vggface2"
+      weight: 0.3
+    - name: "casia_webface"
+      root: "data/raw/casia-webface"
+      weight: 0.2
+  image_size: 112
+  augmentation:
+    horizontal_flip: 0.5
+    color_jitter: 0.4
+    random_erasing: 0.3
+    normalize:
+      mean: [0.5, 0.5, 0.5]
+      std: [0.5, 0.5, 0.5]
+
+evaluation:
+  val_datasets: ["lfw", "ijb_c"]
+  eval_interval: 5000
+  demographic_audit: true
+  audit_attributes: ["skin_tone", "gender", "age_group"]

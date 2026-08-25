@@ -1,0 +1,60 @@
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# Checkpoints and weights
+checkpoints/
+*.pt
+*.pth
+*.onnx
+*.tflite
+!checkpoints/.gitkeep
+
+# Data
+data/raw/
+data/processed/
+*.csv
+*.parquet
+datasets/
+
+# Logs
+logs/
+wandb/
+runs/
+*.log
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# API secrets
+.env
+*.env
+secrets/
+
+# Design system cache
+design-system/
+
+# Outputs
+outputs/
+results/
+predictions/

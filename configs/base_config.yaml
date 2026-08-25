@@ -1,0 +1,19 @@
+project:
+  name: "SentinelID"
+  version: "1.0.0"
+  seed: 42
+  device: "cuda"
+  mixed_precision: true
+  compile_model: true  # torch.compile for A100
+
+paths:
+  data_root: "data/raw"
+  checkpoint_dir: "checkpoints"
+  log_dir: "logs"
+  output_dir: "outputs"
+
+compute:
+  num_workers: 8
+  pin_memory: true
+  persistent_workers: true
+  prefetch_factor: 4

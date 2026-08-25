@@ -1,0 +1,49 @@
+defaults:
+  - base_config
+
+model:
+  backbone: "resnet50"
+  pretrained: true
+  depth_head:
+    channels: [256, 128, 64, 1]
+    upsampling: "bilinear"
+  liveness_head:
+    hidden_dim: 512
+    dropout: 0.3
+
+loss:
+  liveness_weight: 1.0
+  depth_weight: 0.5
+  depth_loss: "berhu"
+  liveness_loss: "binary_cross_entropy"
+  contrastive_weight: 0.1
+
+training:
+  epochs: 30
+  batch_size: 64
+  optimizer: "adamw"
+  lr: 1e-4
+  weight_decay: 1e-4
+  lr_scheduler: "cosine_with_warmup"
+  warmup_steps: 500
+
+data:
+  spoof_datasets:
+    - "nuaa"
+    - "msu_mfsd"
+    - "casia_surf"
+    - "celebdf_spoof"
+  real_datasets:
+    - "ffhq"
+    - "celeba_hq"
+  image_size: 224
+  depth_pseudo_label_model: "3ddfa_v2"
+  augmentation:
+    compression_artifacts: true
+    screen_moire: true
+    print_texture: true
+    lighting_variation: true
+
+evaluation:
+  metrics: ["ACER", "APCER", "BPCER", "AUC"]
+  threshold_tuning: "equal_error_rate"

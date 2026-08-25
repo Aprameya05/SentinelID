@@ -1,0 +1,70 @@
+# Core
+torch>=2.2.0
+torchvision>=0.17.0
+torchaudio>=2.2.0
+timm>=0.9.16
+transformers>=4.38.0
+
+# Face / Vision
+facenet-pytorch>=2.5.3
+insightface>=0.7.3
+opencv-python>=4.9.0.80
+Pillow>=10.2.0
+albumentations>=1.3.1
+scikit-image>=0.22.0
+
+# 3D / Geometry
+pytorch3d>=0.7.5
+
+# Graph Neural Networks
+torch-geometric>=2.5.0
+torch-scatter>=2.1.2
+torch-sparse>=0.6.18
+
+# Audio (optional voice module)
+speechbrain>=0.5.16
+librosa>=0.10.1
+soundfile>=0.12.1
+
+# Document / OCR
+layoutparser>=0.3.4
+pytesseract>=0.3.10
+pdfplumber>=0.10.3
+
+# FAISS for face deduplication
+faiss-gpu>=1.7.4
+
+# Calibration + ML utilities
+scikit-learn>=1.4.0
+scipy>=1.12.0
+numpy>=1.26.0
+pandas>=2.2.0
+
+# Explainability
+grad-cam>=1.5.0
+
+# Edge / Export
+onnx>=1.16.0
+onnxruntime>=1.17.0
+onnxruntime-gpu>=1.17.0
+
+# API
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.1
+python-multipart>=0.0.9
+pydantic>=2.6.0
+
+# Training utilities
+wandb>=0.16.4
+omegaconf>=2.3.0
+hydra-core>=1.3.2
+tqdm>=4.66.2
+rich>=13.7.0
+einops>=0.7.0
+
+# Evaluation + fairness
+aif360>=0.6.0
+
+# Testing
+pytest>=8.0.0
+pytest-cov>=4.1.0
