@@ -72,7 +72,8 @@ class IResNet(nn.Module):
 
         self.bn2 = nn.BatchNorm2d(512, eps=2e-5)
         self.dropout = nn.Dropout(p=dropout)
-        self.fc = nn.Linear(512 * 7 * 7, embedding_dim)
+        self.gap = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Linear(512, embedding_dim)
         self.features = nn.BatchNorm1d(embedding_dim, eps=2e-5)
 
         self._init_weights()
@@ -108,6 +109,7 @@ class IResNet(nn.Module):
 
         x = self.bn2(x)
         x = self.dropout(x)
+        x = self.gap(x)
         x = torch.flatten(x, 1)
         x = self.fc(x)
         x = self.features(x)
