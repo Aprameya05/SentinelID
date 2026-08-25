@@ -45,6 +45,7 @@ class SpatialPositionEmbedding(nn.Module):
         bbox: (B, L, 4) in normalized [0, 1000] coords (x0, y0, x1, y1)
         Returns: (B, L, hidden_size)
         """
+        bbox = bbox.long().clamp(0, 1000)
         x0 = self.x_embed(bbox[:, :, 0])
         y0 = self.y_embed(bbox[:, :, 1])
         x1 = self.x_embed(bbox[:, :, 2])
