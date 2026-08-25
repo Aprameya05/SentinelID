@@ -21,13 +21,13 @@ from pathlib import Path
 
 import torch
 import wandb
-from data.datasets.document import MIDV500Dataset, MIDV2020Dataset
 from omegaconf import OmegaConf
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 from torch.cuda.amp import GradScaler, autocast
 from torch.utils.data import ConcatDataset, DataLoader
 
+from data.datasets.document import MIDV500Dataset, MIDV2020Dataset
 from models.document.layout_intelligence import DocumentIntelligenceModel, DocumentLoss
 
 console = Console()
