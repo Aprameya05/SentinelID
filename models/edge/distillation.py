@@ -89,7 +89,15 @@ class SentinelEdgeModel(nn.Module):
         self._liveness_out = liveness_out
         self._au_out = au_out
 
-    def forward(self, images: Tensor) -> StudentOutput:
+    def forward(self, images: Tensor) -> dict[str, Tensor]:
+        """
+        Returns dict with keys:
+          liveness   : (B,) liveness probability
+          face_embed : (B, face_embed_dim) L2-normalised embedding
+          au_signal  : (B,) or (B, au_out) behavioral signal
+          logits_liveness: (B,) raw logit
+          logits_au  : (B,) or (B, au_out) raw logit
+        """
         feat = self.features(images)
         feat = self.avgpool(feat)
         feat = feat.flatten(1)
@@ -98,17 +106,16 @@ class SentinelEdgeModel(nn.Module):
 
         liveness_raw = self.liveness_head(embedding)
         au_raw = self.au_head(embedding)
-        # squeeze last dim to (B,) when output size is 1
         logits_liveness = liveness_raw.squeeze(-1) if self._liveness_out == 1 else liveness_raw
         logits_au = au_raw.squeeze(-1) if self._au_out == 1 else au_raw
 
-        return StudentOutput(
-            liveness_score=torch.sigmoid(logits_liveness),
-            embedding=F.normalize(embedding, p=2, dim=1),
-            au_signal=torch.sigmoid(logits_au),
-            logits_liveness=logits_liveness,
-            logits_au=logits_au,
-        )
+        return {
+            "liveness": torch.sigmoid(logits_liveness),
+            "face_embed": F.normalize(embedding, p=2, dim=1),
+            "au_signal": torch.sigmoid(logits_au),
+            "logits_liveness": logits_liveness,
+            "logits_au": logits_au,
+        }
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -134,8 +141,9 @@ class DistillationLoss(nn.Module):
         self.alpha = alpha
         self.beta = beta
 
-        # Project teacher 512-d embedding to student 256-d for matching
-        self.emb_matcher = nn.Linear(512, 256, bias=False)
+        # Projection from teacher embedding dim to student embedding dim.
+        # Created lazily on first forward call when dims are known.
+        self._emb_matcher: nn.Linear | None = None
 
     def set_temperature(self, T: float):
         """Anneal temperature during training."""
@@ -170,8 +178,15 @@ class DistillationLoss(nn.Module):
         # Hard label loss (use logit -> bce_with_logits for stability)
         hard_loss = F.binary_cross_entropy_with_logits(student_liveness, hard_labels.float())
 
-        # Embedding matching
-        teacher_proj = self.emb_matcher(teacher_embedding)
+        # Embedding matching — project teacher -> student dim if they differ
+        t_dim = teacher_embedding.shape[-1]
+        s_dim = student_embedding.shape[-1]
+        if t_dim == s_dim:
+            teacher_proj = teacher_embedding
+        else:
+            if self._emb_matcher is None or self._emb_matcher.in_features != t_dim or self._emb_matcher.out_features != s_dim:
+                self._emb_matcher = nn.Linear(t_dim, s_dim, bias=False).to(teacher_embedding.device)
+            teacher_proj = self._emb_matcher(teacher_embedding)
         emb_loss = F.mse_loss(student_embedding, teacher_proj.detach())
 
         total = self.alpha * kl_loss + (1 - self.alpha) * hard_loss + self.beta * emb_loss
