@@ -1,0 +1,19 @@
+project:
+  name: sentinelid-fusion
+  device: cuda
+  mixed_precision: false
+
+paths:
+  checkpoint_dir: checkpoints/
+  score_cache_dir: data/score_vectors/
+
+model:
+  hidden_dims: [128, 64]
+  n_modules: 5
+
+training:
+  batch_size: 256
+  epochs: 200
+  lr: 1.0e-3
+  weight_decay: 1.0e-5
+  confidence_penalty: 0.1

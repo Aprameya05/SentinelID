@@ -1,0 +1,78 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "sentinelid"
+version = "0.1.0"
+description = "Multimodal identity intelligence: 7 DL modules, edge distillation, bias auditing"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+  {name = "Aprameya Bharadwaj", email = "aprameya.bharadwaj.05@gmail.com"},
+]
+keywords = ["face-recognition", "deepfake-detection", "liveness", "biometrics", "identity-verification"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+  "torch>=2.2.0",
+  "torchvision>=0.17.0",
+  "timm>=0.9.16",
+  "transformers>=4.38.0",
+  "omegaconf>=2.3.0",
+  "fastapi>=0.110.0",
+  "uvicorn[standard]>=0.29.0",
+  "opencv-python>=4.9.0",
+  "numpy>=1.26.0",
+  "scikit-learn>=1.4.0",
+  "rich>=13.0.0",
+  "wandb>=0.17.0",
+  "pillow>=10.0.0",
+  "faiss-cpu>=1.8.0",
+  "onnx>=1.16.0",
+  "onnxruntime>=1.18.0",
+]
+
+[project.optional-dependencies]
+gpu = [
+  "faiss-gpu>=1.8.0",
+]
+dev = [
+  "pytest>=8.0.0",
+  "pytest-cov>=5.0.0",
+  "ruff>=0.4.0",
+  "mypy>=1.10.0",
+]
+all = ["sentinelid[gpu,dev]"]
+
+[project.scripts]
+sentinelid-api = "api.main:run"
+sentinelid-demo = "demo.serve:main"
+
+[project.urls]
+"Homepage" = "https://github.com/Aprameya05/SentinelID"
+"Bug Tracker" = "https://github.com/Aprameya05/SentinelID/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["models*", "inference*", "api*", "evaluation*", "explainability*", "training*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true

@@ -1,0 +1,38 @@
+project:
+  name: sentinelid-edge-distillation
+  device: cuda
+  mixed_precision: true
+  compile_model: true
+
+paths:
+  checkpoint_dir: checkpoints/
+  data_root: data/raw/
+
+data:
+  image_size: 224
+  datasets:
+    - name: nuaa
+      root: data/raw/nuaa
+    - name: faceforensics
+      root: data/raw/faceforensics
+
+face:
+  num_classes: 85742
+
+student:
+  face_embed_dim: 256
+  au_out: 12
+
+training:
+  batch_size: 128
+  epochs: 40
+  lr: 5.0e-4
+  weight_decay: 1.0e-4
+  temperature: 4.0
+  alpha: 0.7          # weight for soft targets vs hard labels
+  embedding_weight: 1.0
+
+compute:
+  num_workers: 8
+  pin_memory: true
+  persistent_workers: true

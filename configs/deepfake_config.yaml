@@ -1,0 +1,32 @@
+project:
+  name: sentinelid-deepfake
+  device: cuda
+  mixed_precision: true
+  compile_model: true
+  gradient_checkpointing: true
+
+paths:
+  checkpoint_dir: checkpoints/
+  data_root: data/raw/
+
+data:
+  image_size: 224
+  datasets:
+    - name: faceforensics
+      root: data/raw/faceforensics
+    - name: celebdf
+      root: data/raw/celebdf_v2
+
+training:
+  batch_size: 64
+  epochs: 30
+  lr: 1.0e-4
+  weight_decay: 1.0e-4
+  focal_gamma: 2.0
+  focal_alpha: 0.75
+  eval_every_n_epochs: 3
+
+compute:
+  num_workers: 8
+  pin_memory: true
+  persistent_workers: true
