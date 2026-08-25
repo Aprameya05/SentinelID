@@ -73,6 +73,12 @@ target-version = "py310"
 select = ["E", "F", "I", "UP"]
 ignore = ["E501"]
 
+[tool.ruff.lint.isort]
+known-first-party = [
+  "api", "data", "evaluation", "explainability",
+  "inference", "models", "training",
+]
+
 [tool.mypy]
 python_version = "3.10"
 ignore_missing_imports = true

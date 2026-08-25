@@ -115,7 +115,7 @@ class DepthLivenessModel(nn.Module):
       - embedding: 512-d shared representation for downstream fusion
     """
 
-    def __init__(self, pretrained: bool = True, dropout: float = 0.3, backbone: str = "resnet50"):
+    def __init__(self, pretrained: bool = False, dropout: float = 0.3, backbone: str = "resnet50"):
         super().__init__()
         weights = ResNet50_Weights.IMAGENET1K_V2 if pretrained else None
         backbone = resnet50(weights=weights)
