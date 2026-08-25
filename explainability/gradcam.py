@@ -9,11 +9,17 @@ Localization" (Selvaraju et al., ICCV 2017)
 """
 
 
-import cv2
 import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import Tensor
+
+try:
+    import cv2
+    _HAS_CV2 = True
+except ImportError:
+    cv2 = None  # type: ignore[assignment]
+    _HAS_CV2 = False
 
 
 class GradCAM:
@@ -93,15 +99,17 @@ class GradCAM:
         image_np: np.ndarray,   # (H, W, 3) uint8 BGR
         cam: np.ndarray,        # (h, w) in [0, 1]
         alpha: float = 0.5,
-        colormap: int = cv2.COLORMAP_JET,
+        colormap: int = 2,      # cv2.COLORMAP_JET = 2
     ) -> np.ndarray:
-        """Overlay a GradCAM heatmap on the original image."""
+        """Overlay a GradCAM heatmap on the original image. Requires opencv-python."""
+        if not _HAS_CV2:
+            raise ImportError("opencv-python is required for GradCAM overlay. pip install opencv-python")
         H, W = image_np.shape[:2]
         cam_resized = cv2.resize(cam, (W, H))
         cam_uint8 = (cam_resized * 255).astype(np.uint8)
         heatmap = cv2.applyColorMap(cam_uint8, colormap)
-        overlay = cv2.addWeighted(image_np, 1 - alpha, heatmap, alpha, 0)
-        return overlay
+        result = cv2.addWeighted(image_np, 1 - alpha, heatmap, alpha, 0)
+        return result
 
 
 class ScoreExplainer:

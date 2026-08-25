@@ -43,8 +43,17 @@ class SentinelEdgeModel(nn.Module):
     Total params: ~5.4M (MobileNetV3-Large base)
     """
 
-    def __init__(self, embedding_dim: int = 256, pretrained: bool = True):
+    def __init__(
+        self,
+        embedding_dim: int = 256,
+        pretrained: bool = True,
+        liveness_out: int = 1,
+        face_embed_dim: int = 256,
+        au_out: int = 1,
+    ):
         super().__init__()
+        # face_embed_dim overrides embedding_dim when explicitly provided
+        embedding_dim = face_embed_dim
         weights = MobileNet_V3_Large_Weights.IMAGENET1K_V2 if pretrained else None
         base = mobilenet_v3_large(weights=weights)
 
@@ -66,15 +75,19 @@ class SentinelEdgeModel(nn.Module):
         self.liveness_head = nn.Sequential(
             nn.Linear(embedding_dim, 64),
             nn.Hardswish(),
-            nn.Linear(64, 1),
+            nn.Linear(64, liveness_out),
         )
 
         # Behavioral (AU liveness signal) head
         self.au_head = nn.Sequential(
             nn.Linear(embedding_dim, 64),
             nn.Hardswish(),
-            nn.Linear(64, 1),
+            nn.Linear(64, au_out),
         )
+
+        self._embedding_dim = embedding_dim
+        self._liveness_out = liveness_out
+        self._au_out = au_out
 
     def forward(self, images: Tensor) -> StudentOutput:
         feat = self.features(images)
@@ -83,8 +96,11 @@ class SentinelEdgeModel(nn.Module):
 
         embedding = self.shared_proj(feat)
 
-        logits_liveness = self.liveness_head(embedding).squeeze(1)
-        logits_au = self.au_head(embedding).squeeze(1)
+        liveness_raw = self.liveness_head(embedding)
+        au_raw = self.au_head(embedding)
+        # squeeze last dim to (B,) when output size is 1
+        logits_liveness = liveness_raw.squeeze(-1) if self._liveness_out == 1 else liveness_raw
+        logits_au = au_raw.squeeze(-1) if self._au_out == 1 else au_raw
 
         return StudentOutput(
             liveness_score=torch.sigmoid(logits_liveness),
@@ -127,40 +143,39 @@ class DistillationLoss(nn.Module):
 
     def forward(
         self,
-        student: StudentOutput,
+        student_liveness: Tensor,
+        student_embedding: Tensor,
         teacher_liveness_logit: Tensor,
         teacher_embedding: Tensor,
         hard_labels: Tensor,
-    ) -> dict[str, Tensor]:
-
-        # KL divergence (soft labels from teacher at temperature T)
+    ) -> Tensor:
+        """
+        student_liveness:      (B,) student liveness logit
+        student_embedding:     (B, D) L2-normalised student embedding
+        teacher_liveness_logit:(B,) teacher liveness logit
+        teacher_embedding:     (B, D') teacher embedding (projected to student dim internally)
+        hard_labels:           (B,) binary float labels
+        Returns scalar loss tensor.
+        """
         T = self.T
-        soft_teacher = F.sigmoid(teacher_liveness_logit / T)
-        soft_student = F.sigmoid(student.logits_liveness / T)
+        soft_teacher = torch.sigmoid(teacher_liveness_logit / T)
+        soft_student = torch.sigmoid(student_liveness / T)
 
-        # Binary KL: sum(p*log(p/q) + (1-p)*log((1-p)/(1-q)))
+        # Binary KL divergence
         kl_loss = (
             soft_teacher * torch.log(soft_teacher / (soft_student + 1e-8) + 1e-8)
             + (1 - soft_teacher) * torch.log((1 - soft_teacher) / (1 - soft_student + 1e-8) + 1e-8)
         ).mean() * (T ** 2)
 
-        # Hard label loss
-        hard_loss = F.binary_cross_entropy(
-            student.liveness_score, hard_labels.float()
-        )
+        # Hard label loss (use logit -> bce_with_logits for stability)
+        hard_loss = F.binary_cross_entropy_with_logits(student_liveness, hard_labels.float())
 
-        # Embedding matching (FitNets-style)
+        # Embedding matching
         teacher_proj = self.emb_matcher(teacher_embedding)
-        emb_loss = F.mse_loss(student.embedding, teacher_proj.detach())
+        emb_loss = F.mse_loss(student_embedding, teacher_proj.detach())
 
         total = self.alpha * kl_loss + (1 - self.alpha) * hard_loss + self.beta * emb_loss
-
-        return {
-            "total": total,
-            "kl": kl_loss,
-            "hard": hard_loss,
-            "embedding": emb_loss,
-        }
+        return total
 
 
 # ──────────────────────────────────────────────────────────────────────────────
