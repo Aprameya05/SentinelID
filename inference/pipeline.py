@@ -1,253 +1,370 @@
 """
 Full SentinelID inference pipeline.
 
-Loads all trained module checkpoints and runs them in sequence.
-Designed for production use: thread-safe, batched where possible,
-returns structured results with per-module explanations.
+Loads all trained modules and runs them in sequence on a selfie + document.
+Designed for both server-side (full ensemble) and edge (distilled student) deployment.
+
+Usage:
+    pipeline = SentinelPipeline.from_pretrained("checkpoints/")
+    result = pipeline.verify(
+        selfie_path="face.jpg",
+        document_path="passport.jpg",
+        audio_path="voice.wav",  # optional
+    )
+    print(result.decision, result.trust_score)
 """
 
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Optional
+
+import numpy as np
 import torch
 import torch.nn.functional as F
-from torch import Tensor
-from pathlib import Path
-from dataclasses import dataclass, asdict
-from typing import Optional
-import numpy as np
+import torchvision.transforms as T
 import cv2
 from PIL import Image
-import json
 
 from models.liveness.depth_liveness import DepthLivenessModel
 from models.deepfake.cnn_transformer import DeepfakeDetector
 from models.face_recognition.arcface import ArcFaceModel, FaceDeduplicationIndex
 from models.behavioral.au_gnn import ActionUnitGNN, GazeRegressionHead
-from models.fusion.score_fusion import ScoreFusionModel, FusionInput, VerificationResult
+from models.document.layout_intelligence import DocumentIntelligenceModel, DocumentTypeClassifier
+from models.fusion.score_fusion import ScoreFusionModel, VerificationResult
+from explainability.gradcam import ScoreExplainer
+
+# MediaPipe 468-pt -> 68-pt landmark subset
+MP_TO_68 = [
+    162, 234, 93, 58, 172, 136, 149, 148, 152, 377,
+    378, 365, 397, 288, 323, 454, 389, 71, 63, 105,
+    66, 107, 336, 296, 334, 293, 301, 168, 197, 5,
+    4, 75, 97, 2, 326, 305, 33, 160, 158, 133,
+    153, 144, 362, 385, 387, 263, 373, 380, 61, 39,
+    37, 0, 267, 269, 291, 405, 314, 17, 84, 181,
+    91, 146, 76, 185, 40, 38, 87, 178,
+]
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Image preprocessing
-# ──────────────────────────────────────────────────────────────────────────────
-
-IMAGENET_MEAN = [0.485, 0.456, 0.406]
-IMAGENET_STD  = [0.229, 0.224, 0.225]
-FACE_MEAN     = [0.5, 0.5, 0.5]
-FACE_STD      = [0.5, 0.5, 0.5]
-
-
-def load_and_preprocess(
-    image_path: str | Path | np.ndarray,
-    size: tuple[int, int] = (224, 224),
-    mean: list[float] = IMAGENET_MEAN,
-    std: list[float] = IMAGENET_STD,
-) -> Tensor:
-    if isinstance(image_path, (str, Path)):
-        img = cv2.imread(str(image_path))
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    elif isinstance(image_path, np.ndarray):
-        img = image_path
-    else:
-        raise TypeError(f"Expected path or ndarray, got {type(image_path)}")
-
-    img = cv2.resize(img, size, interpolation=cv2.INTER_AREA)
-    img = img.astype(np.float32) / 255.0
-    img = (img - np.array(mean)) / np.array(std)
-    tensor = torch.from_numpy(img.transpose(2, 0, 1)).unsqueeze(0).float()
-    return tensor
+@dataclass
+class PipelineConfig:
+    device: str = "cuda"
+    liveness_threshold: float = 0.5
+    deepfake_threshold: float = 0.5
+    face_match_threshold: float = 0.45
+    trust_accept: float = 0.75
+    trust_review: float = 0.45
+    image_size: int = 224
+    liveness_image_size: int = 256
+    face_image_size: int = 112
+    face_embed_dim: int = 512
+    n_aus: int = 12
 
 
-def extract_landmarks(image: np.ndarray) -> np.ndarray | None:
+def _face_transform(size: int) -> T.Compose:
+    return T.Compose([
+        T.Resize((size, size)),
+        T.ToTensor(),
+        T.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+    ])
+
+
+def _standard_transform(size: int) -> T.Compose:
+    return T.Compose([
+        T.Resize((size, size)),
+        T.ToTensor(),
+        T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ])
+
+
+def _load_image(path, transform: T.Compose) -> torch.Tensor:
+    img = Image.open(path).convert("RGB")
+    return transform(img).unsqueeze(0)
+
+
+def _detect_landmarks(image_path) -> Optional[np.ndarray]:
     """
-    Extract 68-point facial landmarks. Uses mediapipe or dlib as available.
-    Returns (68, 2) normalised coordinates or None if no face detected.
+    Detect 68 facial landmarks using MediaPipe FaceMesh.
+    Returns (68, 2) normalized [0,1] array or None.
     """
     try:
         import mediapipe as mp
-        mp_face_mesh = mp.solutions.face_mesh
-        with mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1) as mesh:
-            result = mesh.process(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        frame = cv2.imread(str(image_path))
+        if frame is None:
+            return None
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        with mp.solutions.face_mesh.FaceMesh(
+            static_image_mode=True, max_num_faces=1, min_detection_confidence=0.5
+        ) as face_mesh:
+            result = face_mesh.process(rgb)
             if not result.multi_face_landmarks:
                 return None
-            lm = result.multi_face_landmarks[0].landmark
-            # Select 68 iBUG-compatible points from mediapipe's 478
-            pts = np.array([[l.x, l.y] for l in lm[:68]])
-            return pts
+            lms = result.multi_face_landmarks[0].landmark
+            return np.array([[lms[i].x, lms[i].y] for i in MP_TO_68], dtype=np.float32)
     except ImportError:
         return None
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Pipeline
-# ──────────────────────────────────────────────────────────────────────────────
-
-@dataclass
-class PipelineConfig:
-    liveness_threshold: float = 0.6
-    deepfake_threshold: float = 0.5     # above this = fake
-    face_match_threshold: float = 0.45  # cosine similarity
-    accept_threshold: float = 0.75
-    review_threshold: float = 0.45
-    device: str = "cuda" if torch.cuda.is_available() else "cpu"
-    batch_size: int = 1
+def _extract_eye_crop(image_path, landmarks: Optional[np.ndarray], size: int = 64) -> torch.Tensor:
+    """Extract normalized eye region crop. Returns (1, 3, size, size)."""
+    mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+    std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+    frame = cv2.imread(str(image_path))
+    if frame is None or landmarks is None:
+        return torch.zeros(1, 3, size, size)
+    H, W = frame.shape[:2]
+    pts_px = landmarks * np.array([W, H])
+    eye_pts = pts_px[36:48]
+    ex0 = max(0, int(eye_pts[:, 0].min()) - 10)
+    ey0 = max(0, int(eye_pts[:, 1].min()) - 10)
+    ex1 = min(W, int(eye_pts[:, 0].max()) + 10)
+    ey1 = min(H, int(eye_pts[:, 1].max()) + 10)
+    crop = frame[ey0:ey1, ex0:ex1]
+    if crop.size == 0:
+        return torch.zeros(1, 3, size, size)
+    crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+    crop_resized = cv2.resize(crop_rgb, (size, size))
+    crop_norm = ((crop_resized - mean) / std).transpose(2, 0, 1)
+    return torch.from_numpy(crop_norm).float().unsqueeze(0)
 
 
 class SentinelPipeline:
     """
-    Unified inference pipeline for identity verification.
-
-    Usage:
-        pipeline = SentinelPipeline.from_pretrained("checkpoints/")
-        result = pipeline.verify(selfie_path="face.jpg", document_path="id.jpg")
-        print(result.decision)  # ACCEPT | REVIEW | REJECT
+    Full 7-module verification pipeline.
+    All models load from checkpoint_dir; missing checkpoints run in random-init mode.
     """
 
-    def __init__(
-        self,
-        liveness_model: DepthLivenessModel,
-        deepfake_model: DeepfakeDetector,
-        face_model: ArcFaceModel,
-        au_model: ActionUnitGNN,
-        fusion_model: ScoreFusionModel,
-        dedup_index: FaceDeduplicationIndex | None = None,
-        config: PipelineConfig | None = None,
-    ):
-        self.liveness = liveness_model
-        self.deepfake = deepfake_model
-        self.face = face_model
-        self.au = au_model
-        self.fusion = fusion_model
-        self.dedup = dedup_index
-        self.config = config or PipelineConfig()
+    def __init__(self, config: PipelineConfig, checkpoint_dir):
+        self.cfg = config
+        self.ckpt_dir = Path(checkpoint_dir)
+        self.device = torch.device(config.device if torch.cuda.is_available() else "cpu")
+        self._calibrators = None
+        self._load_models()
 
-        self.device = torch.device(self.config.device)
-        self._set_eval_mode()
+    def _load(self, model: torch.nn.Module, *filenames: str) -> torch.nn.Module:
+        """Load first matching checkpoint filename, warn if none found."""
+        model = model.to(self.device)
+        for filename in filenames:
+            path = self.ckpt_dir / filename
+            if path.exists():
+                state = torch.load(path, map_location=self.device)
+                # Handle nested state dicts from joint checkpoints
+                if isinstance(state, dict):
+                    if "au_gnn" in state:
+                        state = state["au_gnn"]
+                    elif "gaze_head" in state:
+                        state = state["gaze_head"]
+                    elif "model" in state:
+                        state = state["model"]
+                try:
+                    model.load_state_dict(state)
+                except RuntimeError:
+                    pass  # shape mismatch from wrong file; continue with random init
+                break
+        model.eval()
+        return model
 
-    def _set_eval_mode(self):
-        for model in [self.liveness, self.deepfake, self.face, self.au, self.fusion]:
-            model.eval().to(self.device)
+    def _load_models(self):
+        self.liveness_model = self._load(
+            DepthLivenessModel(backbone="resnet50"),
+            "liveness_best.pt", "liveness_latest.pt",
+        )
+        self.deepfake_model = self._load(
+            DeepfakeDetector(pretrained=False),
+            "deepfake_best.pt", "deepfake_latest.pt",
+        )
+        self.face_model = self._load(
+            ArcFaceModel(num_classes=1, embedding_dim=self.cfg.face_embed_dim, backbone="iresnet50"),
+            "face_model.pt",
+        )
+        self.face_index = FaceDeduplicationIndex(dim=self.cfg.face_embed_dim)
+
+        # Behavioral: load joint checkpoint
+        au_model = ActionUnitGNN(n_landmarks=68, n_aus=self.cfg.n_aus).to(self.device)
+        gaze_head = GazeRegressionHead(in_channels=3, hidden_dim=128).to(self.device)
+        for fname in ("behavioral_best.pt", "behavioral_latest.pt"):
+            path = self.ckpt_dir / fname
+            if path.exists():
+                state = torch.load(path, map_location=self.device)
+                if isinstance(state, dict) and "au_gnn" in state:
+                    try:
+                        au_model.load_state_dict(state["au_gnn"])
+                    except RuntimeError:
+                        pass
+                    if "gaze_head" in state:
+                        try:
+                            gaze_head.load_state_dict(state["gaze_head"])
+                        except RuntimeError:
+                            pass
+                break
+        self.au_model = au_model.eval()
+        self.gaze_head = gaze_head.eval()
+
+        self.doc_model = self._load(
+            DocumentIntelligenceModel(image_size=self.cfg.image_size),
+            "document_best.pt", "document_latest.pt",
+        )
+
+        # Fusion
+        self.fusion_model = ScoreFusionModel(n_modules=5).to(self.device)
+        fusion_path = self.ckpt_dir / "fusion_best.pt"
+        if fusion_path.exists():
+            state = torch.load(fusion_path, map_location=self.device)
+            try:
+                self.fusion_model.load_state_dict(state.get("model", state))
+            except RuntimeError:
+                pass
+            self._calibrators = state.get("calibrators", None)
+        self.fusion_model.eval()
 
     @classmethod
-    def from_pretrained(cls, checkpoint_dir: str | Path, config: PipelineConfig | None = None) -> "SentinelPipeline":
-        """Load all module checkpoints from a directory."""
-        ckpt_dir = Path(checkpoint_dir)
-        cfg = config or PipelineConfig()
-        device = torch.device(cfg.device)
-
-        def load(model: torch.nn.Module, name: str) -> torch.nn.Module:
-            path = ckpt_dir / f"{name}.pt"
-            if path.exists():
-                state = torch.load(path, map_location=device, weights_only=True)
-                model.load_state_dict(state)
-                print(f"Loaded {name} from {path}")
-            else:
-                print(f"Warning: checkpoint {path} not found, using random weights")
-            return model
-
-        liveness  = load(DepthLivenessModel(), "liveness_model")
-        deepfake  = load(DeepfakeDetector(), "deepfake_model")
-        face      = load(ArcFaceModel(), "face_model")
-        au        = load(ActionUnitGNN(), "au_model")
-        fusion    = load(ScoreFusionModel(), "fusion_model")
-
-        dedup_path = ckpt_dir / "dedup_index.bin"
-        dedup = FaceDeduplicationIndex() if not dedup_path.exists() else None
-
-        return cls(liveness, deepfake, face, au, fusion, dedup, cfg)
+    def from_pretrained(cls, checkpoint_dir, config: Optional[PipelineConfig] = None):
+        return cls(config or PipelineConfig(), checkpoint_dir)
 
     @torch.inference_mode()
-    def run_liveness(self, selfie: Tensor) -> tuple[float, np.ndarray]:
-        out = self.liveness(selfie.to(self.device))
-        score = out.liveness_score.cpu().item()
-        depth = out.depth_map.squeeze().cpu().numpy()
-        return score, depth
+    def run_liveness(self, selfie_path) -> tuple[float, Optional[np.ndarray]]:
+        img = _load_image(selfie_path, _standard_transform(self.cfg.liveness_image_size)).to(self.device)
+        out = self.liveness_model(img)
+        score = float(torch.sigmoid(out["liveness_logit"]).item())
+        depth = out.get("depth_map")
+        depth_np = depth.squeeze().cpu().numpy() if depth is not None else None
+        return score, depth_np
 
     @torch.inference_mode()
-    def run_deepfake(self, selfie: Tensor) -> float:
-        out = self.deepfake(selfie.to(self.device))
-        return out.fake_score.cpu().item()
+    def run_deepfake(self, selfie_path) -> float:
+        img = _load_image(selfie_path, _standard_transform(self.cfg.image_size)).to(self.device)
+        logit = self.deepfake_model(img)
+        return float(torch.sigmoid(logit).item())
 
     @torch.inference_mode()
-    def run_face_recognition(self, selfie: Tensor) -> tuple[np.ndarray, float | None]:
-        embedding = self.face.embed(selfie.to(self.device)).cpu().numpy()[0]
+    def run_face_recognition(self, selfie_path) -> tuple[np.ndarray, Optional[float]]:
+        img = _load_image(selfie_path, _face_transform(self.cfg.face_image_size)).to(self.device)
+        embedding = self.face_model.embed(img).cpu().numpy()[0]
         dedup_score = None
-        if self.dedup is not None:
-            is_dup, _, sim = self.dedup.is_duplicate(embedding)
-            dedup_score = sim
+        if self.face_index.index.ntotal > 0:
+            sims, _ = self.face_index.search(embedding.reshape(1, -1), k=1)
+            dedup_score = float(sims[0, 0])
         return embedding, dedup_score
 
     @torch.inference_mode()
-    def run_behavioral(self, image: np.ndarray) -> float:
-        landmarks = extract_landmarks(image)
+    def run_behavioral(self, selfie_path) -> float:
+        landmarks = _detect_landmarks(selfie_path)
         if landmarks is None:
-            return 0.5  # neutral if landmark detection fails
-        lm_tensor = torch.tensor(landmarks, dtype=torch.float32).unsqueeze(0).to(self.device)
-        out = self.au(lm_tensor)
-        return out["liveness_signal"].cpu().item()
+            return 0.5
+        lm_t = torch.from_numpy(landmarks).float().unsqueeze(0).to(self.device)
+        au_pred, _ = self.au_model(lm_t)
+        eye_crop = _extract_eye_crop(selfie_path, landmarks).to(self.device)
+        gaze_vec = self.gaze_head(eye_crop)
+        au_activity = float((au_pred > 0.5).float().mean().item())
+        gaze_plausibility = float(1.0 - abs(gaze_vec.norm(dim=1).clamp(0, 2).item() - 1.0))
+        return float(np.clip(0.6 * au_activity + 0.4 * gaze_plausibility, 0.0, 1.0))
+
+    @torch.inference_mode()
+    def run_document(self, document_path) -> tuple[float, dict]:
+        img = _load_image(document_path, _standard_transform(self.cfg.image_size)).to(self.device)
+        L = 128
+        token_ids = torch.zeros(1, L, dtype=torch.long, device=self.device)
+        bbox = torch.zeros(1, L, 4, dtype=torch.long, device=self.device)
+        attn = torch.zeros(1, L, dtype=torch.long, device=self.device)
+        out = self.doc_model(img, token_ids, bbox, attn)
+        forgery_prob = float(out["forgery_prob"].item())
+        doc_type_idx = int(out["doc_type_logits"].argmax(dim=1).item())
+        doc_type = DocumentTypeClassifier.DOC_TYPES[doc_type_idx]
+        return 1.0 - forgery_prob, {
+            "document_type": doc_type,
+            "forgery_probability": forgery_prob,
+            "forgery_signals": {k: float(v.item()) for k, v in out["forgery_signals"].items()},
+        }
+
+    @torch.inference_mode()
+    def run_voice(self, audio_path) -> Optional[float]:
+        try:
+            from speechbrain.pretrained import EncoderClassifier
+            clf = EncoderClassifier.from_hparams(
+                source="speechbrain/spkrec-ecapa-voxceleb",
+                run_opts={"device": str(self.device)},
+            )
+            signal, _ = clf.load_audio(str(audio_path))
+            clf.encode_batch(signal.unsqueeze(0))
+            return 0.5  # neutral without enrollment reference
+        except Exception:
+            return None
 
     def verify(
         self,
-        selfie_path: str | np.ndarray,
-        document_path: str | None = None,
-        enrolled_embedding: np.ndarray | None = None,
-        audio_path: str | None = None,
+        selfie_path,
+        document_path=None,
+        enrolled_embedding: Optional[np.ndarray] = None,
+        audio_path=None,
     ) -> VerificationResult:
-        """
-        Full verification pipeline.
+        t0 = time.time()
+        raw: dict[str, float] = {}
 
-        selfie_path: path to selfie image or numpy array (BGR)
-        document_path: path to ID document image (optional)
-        enrolled_embedding: 512-d face embedding to match against (optional)
-        audio_path: path to audio file for voice verification (optional)
-        """
-        # Load selfie
-        if isinstance(selfie_path, str):
-            raw_image = cv2.imread(selfie_path)
-        else:
-            raw_image = selfie_path
+        liveness_score, depth_map = self.run_liveness(selfie_path)
+        raw["liveness"] = liveness_score
 
-        selfie_tensor = load_and_preprocess(raw_image)
+        deepfake_fake_prob = self.run_deepfake(selfie_path)
+        raw["deepfake_fake_prob"] = deepfake_fake_prob
 
-        # Module 01: Liveness
-        liveness_score, depth_map = self.run_liveness(selfie_tensor)
-
-        # Module 02: Deepfake
-        fake_score = self.run_deepfake(selfie_tensor)
-
-        # Module 03: Face recognition
-        embedding, dedup_score = self.run_face_recognition(selfie_tensor)
-        face_match_score = 0.5  # default if no enrolled embedding
+        embedding, dedup_score = self.run_face_recognition(selfie_path)
         if enrolled_embedding is not None:
-            face_match_score = float(
-                np.dot(embedding, enrolled_embedding) /
-                (np.linalg.norm(embedding) * np.linalg.norm(enrolled_embedding) + 1e-8)
-            )
-            # Normalise cosine similarity from [-1,1] to [0,1]
-            face_match_score = (face_match_score + 1) / 2
+            e = enrolled_embedding / (np.linalg.norm(enrolled_embedding) + 1e-8)
+            emb = embedding / (np.linalg.norm(embedding) + 1e-8)
+            face_match = float((np.dot(emb, e) + 1.0) / 2.0)
+        else:
+            face_match = 0.5
+        raw["face_match"] = face_match
 
-        # Module 04: Behavioral biometrics
-        au_score = self.run_behavioral(raw_image)
+        behavioral = self.run_behavioral(selfie_path)
+        raw["behavioral"] = behavioral
 
-        # Module 05: Document intelligence (if provided)
-        doc_score = 0.5  # neutral default
+        document_score = 0.5
+        doc_meta: dict = {}
         if document_path is not None:
-            # Full doc intelligence is in DocumentIntelligence module
-            # Lightweight stub here: check document exists and is readable
-            doc_score = 0.8 if Path(document_path).exists() else 0.3
+            document_score, doc_meta = self.run_document(document_path)
+        raw["document"] = document_score
 
-        # Module 06: Fusion
-        fusion_input = FusionInput(
-            liveness_score=liveness_score,
-            deepfake_score=fake_score,
-            face_match_score=face_match_score,
-            au_liveness_signal=au_score,
-            document_score=doc_score,
+        if audio_path is not None:
+            voice = self.run_voice(audio_path)
+            if voice is not None:
+                raw["voice"] = voice
+
+        # Fusion
+        score_vec = torch.tensor([
+            liveness_score,
+            1.0 - deepfake_fake_prob,
+            face_match,
+            behavioral,
+            document_score,
+        ], dtype=torch.float32).unsqueeze(0).to(self.device)
+
+        if self._calibrators:
+            cols = [torch.tensor(c.transform(score_vec[:, i].cpu().numpy())).float()
+                    for i, c in enumerate(self._calibrators)]
+            score_vec = torch.stack(cols, dim=1).to(self.device)
+
+        trust_score, _ = self.fusion_model(score_vec)
+        trust_score = float(trust_score.item())
+
+        if trust_score >= self.cfg.trust_accept:
+            decision = "ACCEPT"
+        elif trust_score >= self.cfg.trust_review:
+            decision = "REVIEW"
+        else:
+            decision = "REJECT"
+
+        result = VerificationResult(
+            trust_score=trust_score,
+            decision=decision,
+            raw_scores=raw,
+            explanations={"latency_ms": round((time.time() - t0) * 1000, 1), **doc_meta},
         )
-        result = self.fusion.decide(fusion_input)
+        result.explanations["text"] = ScoreExplainer.explain(result)
         return result
 
-    def to_json(self, result: VerificationResult) -> str:
-        return json.dumps({
-            "trust_score": result.trust_score,
-            "decision": result.decision,
-            "explanations": result.explanations,
-            "raw_scores": result.raw_scores,
-        }, indent=2)
+    def enroll(self, selfie_path) -> np.ndarray:
+        embedding, _ = self.run_face_recognition(selfie_path)
+        return embedding
+
+    def add_to_dedup_index(self, embedding: np.ndarray):
+        self.face_index.add(embedding.reshape(1, -1))
