@@ -41,20 +41,21 @@ body{
 
 #bg{position:fixed;inset:0;z-index:0;pointer-events:none}
 
-/* Nav */
+/* ── NAV ── */
 nav{
   position:fixed;top:0;left:0;right:0;z-index:900;
   height:60px;
   display:flex;align-items:center;justify-content:space-between;
-  padding:0 clamp(20px,5vw,80px);
+  padding:0 clamp(16px,5vw,80px);
   border-bottom:1px solid var(--border);
-  background:rgba(2,8,17,0.75);
+  background:rgba(2,8,17,0.85);
   backdrop-filter:blur(20px);
 }
 .logo{
   display:flex;align-items:center;gap:9px;
   text-decoration:none;color:var(--text);
   font-size:15px;font-weight:700;letter-spacing:-0.4px;
+  flex-shrink:0;
 }
 .logo-icon{
   width:28px;height:28px;border-radius:6px;
@@ -64,23 +65,19 @@ nav{
   position:relative;
 }
 .logo-icon::before{
-  content:'';
-  width:10px;height:10px;border-radius:50%;
-  border:2px solid var(--accent);
-  display:block;
+  content:'';width:10px;height:10px;border-radius:50%;
+  border:2px solid var(--accent);display:block;
 }
 .logo-icon::after{
-  content:'';
-  position:absolute;top:6px;left:6px;
-  width:4px;height:4px;border-radius:50%;
-  background:var(--accent);
+  content:'';position:absolute;top:6px;left:6px;
+  width:4px;height:4px;border-radius:50%;background:var(--accent);
 }
 .nav-links{display:flex;align-items:center;gap:2px}
 .nav-links a{
   padding:6px 14px;border-radius:6px;
   font-size:13px;font-weight:500;color:var(--text2);
   text-decoration:none;transition:color .12s,background .12s;
-  letter-spacing:-0.1px;
+  letter-spacing:-0.1px;white-space:nowrap;
 }
 .nav-links a:hover{color:var(--text);background:rgba(255,255,255,0.04)}
 .nav-right{display:flex;align-items:center;gap:8px}
@@ -90,516 +87,420 @@ nav{
   border:1px solid rgba(34,197,94,0.2);
   background:rgba(34,197,94,0.05);
   font-family:var(--mono);font-size:10.5px;color:var(--green);
-  letter-spacing:0.04em;
+  letter-spacing:0.04em;white-space:nowrap;
 }
 .sys-dot{
   width:5px;height:5px;border-radius:50%;
   background:var(--green);
   box-shadow:0 0 6px var(--green);
   animation:blink 2.8s ease infinite;
+  flex-shrink:0;
 }
 @keyframes blink{0%,90%,100%{opacity:1}95%{opacity:0.2}}
 .btn-outline{
   padding:7px 18px;border-radius:6px;
   border:1px solid var(--border2);
   font-size:13px;font-weight:600;color:var(--text2);
-  text-decoration:none;transition:all .12s;
+  text-decoration:none;transition:all .12s;white-space:nowrap;
 }
 .btn-outline:hover{border-color:rgba(14,165,233,.4);color:var(--text)}
 .btn-cta{
   padding:7px 18px;border-radius:6px;
   background:var(--accent);
   font-size:13px;font-weight:600;color:#fff;
-  text-decoration:none;transition:all .12s;
+  text-decoration:none;transition:all .12s;cursor:pointer;
+  border:none;white-space:nowrap;
 }
 .btn-cta:hover{background:#0284C7}
 
-/* Main layout */
+/* ── MAIN ── */
 main{position:relative;z-index:1}
 
-/* HERO */
+/* ── HERO ── */
 .hero{
   min-height:100vh;
   display:grid;
   grid-template-columns:1fr 1fr;
   align-items:center;
-  gap:80px;
-  padding:100px clamp(24px,6vw,100px) 80px;
-  max-width:1360px;
-  margin:0 auto;
+  gap:60px;
+  padding:100px clamp(16px,6vw,100px) 80px;
+  max-width:1360px;margin:0 auto;
 }
-.hero-left{
-  display:flex;flex-direction:column;
-  align-items:flex-start;
-}
+.hero-left{display:flex;flex-direction:column;align-items:flex-start}
 .hero-tag{
-  font-family:var(--mono);
-  font-size:10.5px;color:var(--text2);
-  letter-spacing:0.14em;text-transform:uppercase;
-  margin-bottom:36px;
+  font-family:var(--mono);font-size:10.5px;color:var(--text2);
+  letter-spacing:0.14em;text-transform:uppercase;margin-bottom:36px;
   display:flex;align-items:center;gap:10px;
 }
-.hero-tag::before{
-  content:'';display:block;
-  width:24px;height:1px;background:var(--text3);
-}
+.hero-tag::before{content:'';display:block;width:24px;height:1px;background:var(--text3)}
 h1{
-  font-size:clamp(36px,4.5vw,62px);
-  font-weight:800;
-  line-height:1.06;
-  letter-spacing:-2.5px;
-  margin-bottom:28px;
-  max-width:560px;
-  color:#EBF4FF;
+  font-size:clamp(30px,4.5vw,62px);font-weight:800;
+  line-height:1.06;letter-spacing:-2.5px;
+  margin-bottom:28px;max-width:560px;color:#EBF4FF;
 }
-h1 em{
-  font-style:normal;
-  color:var(--accent);
-}
+h1 em{font-style:normal;color:var(--accent)}
 .hero-desc{
-  font-size:16px;line-height:1.8;
-  color:var(--text2);
-  max-width:460px;
-  margin-bottom:44px;
-  font-weight:400;
+  font-size:16px;line-height:1.8;color:var(--text2);
+  max-width:460px;margin-bottom:44px;font-weight:400;
 }
-.hero-actions{display:flex;align-items:center;gap:12px;margin-bottom:56px}
+.hero-actions{display:flex;align-items:center;gap:12px;margin-bottom:56px;flex-wrap:wrap}
 .btn-primary{
   display:inline-flex;align-items:center;gap:8px;
-  padding:10px 24px;border-radius:7px;
-  background:var(--accent);
+  padding:10px 24px;border-radius:7px;background:var(--accent);
   font-size:14px;font-weight:700;color:#fff;
-  text-decoration:none;transition:all .15s;
-  letter-spacing:-0.2px;
+  text-decoration:none;transition:all .15s;letter-spacing:-0.2px;
   box-shadow:0 0 0 0 rgba(14,165,233,0);
 }
-.btn-primary:hover{
-  background:#0284C7;
-  box-shadow:0 0 28px rgba(14,165,233,0.3);
-}
+.btn-primary:hover{background:#0284C7;box-shadow:0 0 28px rgba(14,165,233,0.3)}
 .btn-secondary{
   display:inline-flex;align-items:center;gap:8px;
-  padding:10px 20px;border-radius:7px;
-  border:1px solid var(--border2);
+  padding:10px 20px;border-radius:7px;border:1px solid var(--border2);
   font-size:14px;font-weight:600;color:var(--text2);
-  text-decoration:none;transition:all .15s;
-  letter-spacing:-0.2px;
+  text-decoration:none;transition:all .15s;letter-spacing:-0.2px;
 }
 .btn-secondary:hover{color:var(--text);border-color:rgba(255,255,255,0.15)}
 .hero-metrics{
   display:grid;grid-template-columns:repeat(3,1fr);
-  gap:0;
-  border:1px solid var(--border);
-  border-radius:8px;
-  overflow:hidden;
-  background:rgba(5,13,26,0.7);
-  backdrop-filter:blur(12px);
+  border:1px solid var(--border);border-radius:8px;
+  overflow:hidden;background:rgba(5,13,26,0.7);backdrop-filter:blur(12px);
 }
-.hm-item{
-  padding:18px 22px;
-  border-right:1px solid var(--border);
-}
+.hm-item{padding:18px 22px;border-right:1px solid var(--border)}
 .hm-item:last-child{border-right:none}
 .hm-num{
-  font-family:var(--mono);
-  font-size:22px;font-weight:500;
-  color:var(--text);
-  line-height:1;
-  margin-bottom:4px;
+  font-family:var(--mono);font-size:22px;font-weight:500;
+  color:var(--text);line-height:1;margin-bottom:4px;
 }
 .hm-num span{color:var(--accent);font-size:14px}
 .hm-label{font-size:10.5px;color:var(--text3);letter-spacing:0.04em;text-transform:uppercase;font-weight:600}
 
-/* Hero right — Verification Feed */
+/* Hero right */
 .hero-right{display:flex;flex-direction:column;gap:14px}
 .vf-header{
   display:flex;align-items:center;justify-content:space-between;
-  padding:0 0 12px;
-  border-bottom:1px solid var(--border);
+  padding:0 0 12px;border-bottom:1px solid var(--border);
 }
-.vf-title{
-  font-family:var(--mono);font-size:10.5px;
-  color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;
-}
-.vf-live{
-  display:flex;align-items:center;gap:5px;
-  font-family:var(--mono);font-size:10px;color:var(--red);
-  letter-spacing:0.08em;
-}
+.vf-title{font-family:var(--mono);font-size:10.5px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase}
+.vf-live{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--red);letter-spacing:0.08em}
 .vf-live-dot{width:5px;height:5px;border-radius:50%;background:var(--red);animation:blink 1.2s ease infinite}
-.feed-list{display:flex;flex-direction:column;gap:2px}
+.feed-list{display:flex;flex-direction:column;gap:2px;min-height:180px}
 .feed-item{
-  display:flex;align-items:center;gap:10px;
-  padding:10px 14px;border-radius:6px;
-  border:1px solid transparent;
-  transition:all .2s;
-  font-size:12.5px;
+  display:grid;grid-template-columns:24px 88px 1fr auto auto;
+  align-items:center;gap:8px;
+  padding:9px 12px;border-radius:6px;
+  border:1px solid transparent;transition:all .2s;font-size:12px;
 }
-.feed-item.blocked{
-  border-color:rgba(244,63,94,0.12);
-  background:rgba(244,63,94,0.04);
-}
-.feed-item.passed{
-  border-color:rgba(34,197,94,0.1);
-  background:rgba(34,197,94,0.03);
-}
+.feed-item.blocked{border-color:rgba(244,63,94,0.12);background:rgba(244,63,94,0.04)}
+.feed-item.passed{border-color:rgba(34,197,94,0.1);background:rgba(34,197,94,0.03)}
 .fi-status{
   width:20px;height:20px;border-radius:4px;
-  display:grid;place-items:center;flex-shrink:0;
-  font-family:var(--mono);font-size:10px;font-weight:500;
+  display:grid;place-items:center;
+  font-family:var(--mono);font-size:9.5px;font-weight:500;
 }
 .fi-status.b{background:rgba(244,63,94,0.12);color:var(--red)}
 .fi-status.p{background:rgba(34,197,94,0.1);color:var(--green)}
-.fi-id{font-family:var(--mono);color:var(--text3);font-size:11px;flex-shrink:0;width:80px}
-.fi-type{color:var(--text);font-weight:500;flex:1}
-.fi-module{font-family:var(--mono);font-size:10.5px;color:var(--text3);flex-shrink:0}
-.fi-score{
-  font-family:var(--mono);font-size:11px;
-  flex-shrink:0;padding:2px 7px;border-radius:3px;
-  font-weight:500;
-}
+.fi-id{font-family:var(--mono);color:var(--text3);font-size:10.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fi-type{color:var(--text);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fi-module{font-family:var(--mono);font-size:10px;color:var(--text3)}
+.fi-score{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:3px;font-weight:500}
 .fi-score.b{background:rgba(244,63,94,0.1);color:var(--red)}
 .fi-score.p{background:rgba(34,197,94,0.08);color:var(--green)}
 
 .pipeline-mini{
-  padding:14px 16px;
-  border:1px solid var(--border);
-  border-radius:8px;
-  background:rgba(5,13,26,0.6);
-  backdrop-filter:blur(8px);
+  padding:14px 16px;border:1px solid var(--border);border-radius:8px;
+  background:rgba(5,13,26,0.6);backdrop-filter:blur(8px);
 }
-.pm-label{
-  font-family:var(--mono);font-size:10px;
-  color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;
-  margin-bottom:12px;
-}
-.pm-flow{display:flex;align-items:center;gap:0}
-.pm-node{
-  display:flex;flex-direction:column;align-items:center;gap:4px;
-  flex:1;cursor:default;
-}
+.pm-label{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:12px}
+.pm-flow{display:flex;align-items:center}
+.pm-node{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;cursor:default}
 .pm-node-circle{
   width:32px;height:32px;border-radius:50%;
   border:1.5px solid var(--border2);
   display:grid;place-items:center;
   font-family:var(--mono);font-size:10px;color:var(--text2);
-  background:rgba(5,13,26,0.8);
-  transition:all .2s;
-  position:relative;
+  background:rgba(5,13,26,0.8);transition:all .2s;
 }
-.pm-node.active .pm-node-circle{
-  border-color:var(--accent);
-  color:var(--accent);
-  background:rgba(14,165,233,0.08);
-  box-shadow:0 0 12px rgba(14,165,233,0.2);
-}
-.pm-node.done .pm-node-circle{
-  border-color:var(--green);
-  color:var(--green);
-  background:rgba(34,197,94,0.06);
-}
-.pm-node-label{
-  font-family:var(--mono);font-size:9px;
-  color:var(--text3);text-align:center;
-  white-space:nowrap;letter-spacing:0.04em;
-}
-.pm-connector{
-  height:1px;background:var(--border);
-  flex:0.4;margin-bottom:16px;
-}
+.pm-node.active .pm-node-circle{border-color:var(--accent);color:var(--accent);background:rgba(14,165,233,0.08);box-shadow:0 0 12px rgba(14,165,233,0.2)}
+.pm-node.done .pm-node-circle{border-color:var(--green);color:var(--green);background:rgba(34,197,94,0.06)}
+.pm-node-label{font-family:var(--mono);font-size:9px;color:var(--text3);text-align:center;white-space:nowrap;letter-spacing:0.04em}
+.pm-connector{height:1px;background:var(--border);flex:0.4;margin-bottom:16px}
 .pm-connector.done{background:rgba(34,197,94,0.3)}
 
-/* SECTION SHARED */
-section{
-  position:relative;z-index:1;
-  padding:100px clamp(24px,6vw,100px);
-  max-width:1360px;margin:0 auto;
-}
+/* ── SECTIONS ── */
+section{position:relative;z-index:1;padding:100px clamp(16px,6vw,100px);max-width:1360px;margin:0 auto}
 .sec-head{
   display:flex;align-items:baseline;gap:14px;
-  margin-bottom:56px;
-  border-bottom:1px solid var(--border);
-  padding-bottom:20px;
+  margin-bottom:56px;border-bottom:1px solid var(--border);padding-bottom:20px;
 }
-.sec-num{
-  font-family:var(--mono);font-size:10.5px;
-  color:var(--text3);letter-spacing:0.12em;
-  flex-shrink:0;
-}
-.sec-title{
-  font-size:clamp(22px,2.5vw,30px);
-  font-weight:800;letter-spacing:-1px;
-  color:var(--text);line-height:1.1;
-}
-.sec-sub{
-  margin-left:auto;
-  font-size:13px;color:var(--text3);
-  max-width:280px;text-align:right;
-  line-height:1.6;
-}
+.sec-num{font-family:var(--mono);font-size:10.5px;color:var(--text3);letter-spacing:0.12em;flex-shrink:0}
+.sec-title{font-size:clamp(20px,2.5vw,30px);font-weight:800;letter-spacing:-1px;color:var(--text);line-height:1.1}
+.sec-sub{margin-left:auto;font-size:13px;color:var(--text3);max-width:280px;text-align:right;line-height:1.6}
 
-/* PIPELINE SECTION */
-.pipeline-section{
-  padding-top:0;padding-bottom:120px;
-}
+/* ── PIPELINE ── */
+.pipeline-section{padding-top:0;padding-bottom:120px}
 .pipeline-track{
-  position:relative;
-  display:flex;align-items:stretch;
-  gap:0;
-  border:1px solid var(--border);
-  border-radius:10px;
-  overflow:hidden;
-  background:rgba(5,13,26,0.5);
+  position:relative;display:flex;align-items:stretch;
+  border:1px solid var(--border);border-radius:10px;overflow:hidden;
+  background:rgba(5,13,26,0.5);overflow-x:auto;
 }
 .p-module{
-  flex:1;
-  padding:28px 22px;
+  flex:1;min-width:140px;padding:28px 22px;
   border-right:1px solid var(--border);
-  display:flex;flex-direction:column;
-  gap:10px;
-  position:relative;
-  transition:background .2s;
-  cursor:default;
+  display:flex;flex-direction:column;gap:10px;
+  position:relative;transition:background .2s;cursor:default;
 }
 .p-module:last-child{border-right:none}
 .p-module:hover{background:rgba(14,165,233,0.04)}
-.p-module::before{
-  content:'';
-  position:absolute;top:0;left:0;right:0;
-  height:2px;background:transparent;
-  transition:background .2s;
-}
+.p-module::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:transparent;transition:background .2s}
 .p-module:hover::before{background:var(--accent)}
-.pm-idx{
-  font-family:var(--mono);font-size:10px;
-  color:var(--text3);letter-spacing:0.1em;
-  font-weight:400;
-}
-.pm-name{
-  font-size:12.5px;font-weight:700;
-  color:var(--text);letter-spacing:-0.2px;
-  line-height:1.2;
-}
-.pm-arch{
-  font-family:var(--mono);font-size:10px;
-  color:var(--text2);
-}
+.pm-idx{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.1em;font-weight:400}
+.pm-name{font-size:12.5px;font-weight:700;color:var(--text);letter-spacing:-0.2px;line-height:1.2}
+.pm-arch{font-family:var(--mono);font-size:10px;color:var(--text2)}
 .pm-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:auto}
-.pm-tag{
-  font-family:var(--mono);font-size:9.5px;
-  color:var(--text3);
-  padding:2px 7px;border-radius:3px;
-  border:1px solid var(--border);
-  letter-spacing:0.02em;
-}
-.pm-score{
-  font-family:var(--mono);font-size:11px;
-  color:var(--accent);
-  padding:3px 8px;border-radius:3px;
-  background:var(--accent-dim);
-  border:1px solid rgba(14,165,233,0.15);
-  align-self:flex-start;
-  margin-top:2px;
-}
+.pm-tag{font-family:var(--mono);font-size:9.5px;color:var(--text3);padding:2px 7px;border-radius:3px;border:1px solid var(--border);letter-spacing:0.02em}
+.pm-score{font-family:var(--mono);font-size:11px;color:var(--accent);padding:3px 8px;border-radius:3px;background:var(--accent-dim);border:1px solid rgba(14,165,233,0.15);align-self:flex-start;margin-top:2px}
 
-/* METRICS STRIP */
+/* ── METRICS STRIP ── */
 .metrics-strip{
   display:grid;grid-template-columns:repeat(4,1fr);
-  border:1px solid var(--border);
-  border-radius:10px;
-  overflow:hidden;
+  border:1px solid var(--border);border-radius:10px;overflow:hidden;
   background:rgba(5,13,26,0.5);
-  margin-bottom:0;
 }
-.ms-item{
-  padding:36px 32px;
-  border-right:1px solid var(--border);
-  display:flex;flex-direction:column;
-  gap:6px;
-}
+.ms-item{padding:36px 32px;border-right:1px solid var(--border);display:flex;flex-direction:column;gap:6px}
 .ms-item:last-child{border-right:none}
-.ms-num{
-  font-family:var(--mono);
-  font-size:clamp(28px,3vw,40px);
-  font-weight:400;
-  color:var(--text);
-  line-height:1;
-  letter-spacing:-1px;
-}
+.ms-num{font-family:var(--mono);font-size:clamp(24px,3vw,40px);font-weight:400;color:var(--text);line-height:1;letter-spacing:-1px}
 .ms-num sup{font-size:0.55em;color:var(--accent);letter-spacing:0}
-.ms-label{
-  font-size:13px;color:var(--text2);
-  font-weight:500;line-height:1.4;
-}
-.ms-sub{
-  font-family:var(--mono);font-size:10px;
-  color:var(--text3);letter-spacing:0.04em;
-  margin-top:4px;
-}
+.ms-label{font-size:13px;color:var(--text2);font-weight:500;line-height:1.4}
+.ms-sub{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.04em;margin-top:4px}
 
-/* THREAT TABLE */
-.threat-table{
-  width:100%;
-  border-collapse:collapse;
-  border:1px solid var(--border);
-  border-radius:8px;
-  overflow:hidden;
-}
-.threat-table thead tr{
-  background:rgba(5,13,26,0.8);
-}
-.threat-table th{
-  padding:12px 20px;
-  text-align:left;
-  font-family:var(--mono);font-size:10px;
-  color:var(--text3);letter-spacing:0.12em;text-transform:uppercase;
-  font-weight:400;
-  border-bottom:1px solid var(--border);
-}
-.threat-table td{
-  padding:16px 20px;
-  font-size:13px;
-  border-bottom:1px solid var(--border);
-  vertical-align:middle;
-}
+/* ── THREAT TABLE ── */
+.threat-table{width:100%;border-collapse:collapse;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.threat-table thead tr{background:rgba(5,13,26,0.8)}
+.threat-table th{padding:12px 20px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.12em;text-transform:uppercase;font-weight:400;border-bottom:1px solid var(--border)}
+.threat-table td{padding:16px 20px;font-size:13px;border-bottom:1px solid var(--border);vertical-align:middle}
 .threat-table tr:last-child td{border-bottom:none}
 .threat-table tbody tr{transition:background .12s}
 .threat-table tbody tr:hover{background:rgba(255,255,255,0.02)}
 .tt-attack{color:var(--text);font-weight:600;font-size:13.5px}
 .tt-desc{color:var(--text2);font-size:12.5px;line-height:1.5}
-.tt-module{
-  font-family:var(--mono);font-size:11px;color:var(--accent);
-  white-space:nowrap;
-}
-.tt-perf{
-  font-family:var(--mono);font-size:11.5px;color:var(--text);
-  white-space:nowrap;
-}
-.badge-block{
-  display:inline-flex;align-items:center;
-  padding:3px 9px;border-radius:3px;
-  font-family:var(--mono);font-size:10.5px;font-weight:500;
-  background:rgba(244,63,94,0.08);
-  color:var(--red);
-  border:1px solid rgba(244,63,94,0.15);
-}
-.badge-detect{
-  display:inline-flex;align-items:center;
-  padding:3px 9px;border-radius:3px;
-  font-family:var(--mono);font-size:10.5px;font-weight:500;
-  background:rgba(34,197,94,0.07);
-  color:var(--green);
-  border:1px solid rgba(34,197,94,0.15);
-}
+.tt-module{font-family:var(--mono);font-size:11px;color:var(--accent);white-space:nowrap}
+.tt-perf{font-family:var(--mono);font-size:11.5px;color:var(--text);white-space:nowrap}
+.badge-block{display:inline-flex;align-items:center;padding:3px 9px;border-radius:3px;font-family:var(--mono);font-size:10.5px;font-weight:500;background:rgba(244,63,94,0.08);color:var(--red);border:1px solid rgba(244,63,94,0.15)}
+.badge-detect{display:inline-flex;align-items:center;padding:3px 9px;border-radius:3px;font-family:var(--mono);font-size:10.5px;font-weight:500;background:rgba(34,197,94,0.07);color:var(--green);border:1px solid rgba(34,197,94,0.15)}
 
-/* API SECTION */
-.api-grid{
-  display:grid;
-  grid-template-columns:1fr 1.2fr;
-  gap:48px;
-  align-items:start;
-}
-.api-desc h2{
-  font-size:clamp(22px,2.5vw,30px);
-  font-weight:800;letter-spacing:-1px;
-  margin-bottom:16px;line-height:1.1;
-}
-.api-desc p{
-  font-size:14px;line-height:1.8;
-  color:var(--text2);margin-bottom:28px;
-}
+/* ── API ── */
+.api-grid{display:grid;grid-template-columns:1fr 1.2fr;gap:48px;align-items:start}
+.api-desc h2{font-size:clamp(20px,2.5vw,30px);font-weight:800;letter-spacing:-1px;margin-bottom:16px;line-height:1.1}
+.api-desc p{font-size:14px;line-height:1.8;color:var(--text2);margin-bottom:28px}
 .endpoint-list{display:flex;flex-direction:column;gap:8px}
-.ep{
-  display:flex;align-items:center;gap:10px;
-  padding:10px 14px;border-radius:6px;
-  border:1px solid var(--border);
-  background:rgba(5,13,26,0.5);
-  font-family:var(--mono);font-size:12px;
-  cursor:default;
-  transition:border-color .15s;
-}
+.ep{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:6px;border:1px solid var(--border);background:rgba(5,13,26,0.5);font-family:var(--mono);font-size:12px;cursor:default;transition:border-color .15s}
 .ep:hover{border-color:rgba(14,165,233,0.25)}
-.ep-method{
-  font-size:10px;font-weight:700;
-  padding:3px 8px;border-radius:3px;
-  min-width:38px;text-align:center;
-  letter-spacing:0.04em;
-}
+.ep-method{font-size:10px;font-weight:700;padding:3px 8px;border-radius:3px;min-width:38px;text-align:center;letter-spacing:0.04em}
 .ep-method.post{background:rgba(14,165,233,0.12);color:var(--accent)}
 .ep-method.get{background:rgba(129,140,248,0.12);color:var(--indigo)}
 .ep-path{color:var(--text2);flex:1}
 .ep-desc{color:var(--text3);font-size:10.5px}
-.code-block{
-  background:rgba(5,13,26,0.8);
-  border:1px solid var(--border);
-  border-radius:8px;
-  overflow:hidden;
-}
-.cb-header{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:12px 16px;
-  border-bottom:1px solid var(--border);
-  background:rgba(2,8,17,0.6);
-}
+.code-block{background:rgba(5,13,26,0.8);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.cb-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:rgba(2,8,17,0.6)}
 .cb-lang{font-family:var(--mono);font-size:10.5px;color:var(--text3);letter-spacing:0.08em}
-.cb-copy{
-  font-family:var(--mono);font-size:10px;color:var(--text3);
-  cursor:pointer;transition:color .15s;
-  background:none;border:none;padding:4px 8px;border-radius:4px;
-}
+.cb-copy{font-family:var(--mono);font-size:10px;color:var(--text3);cursor:pointer;transition:color .15s;background:none;border:none;padding:4px 8px;border-radius:4px}
 .cb-copy:hover{color:var(--text);background:rgba(255,255,255,0.05)}
-pre{
-  padding:20px;
-  font-family:var(--mono);font-size:12px;
-  line-height:1.8;
-  color:#8BA7C5;
-  overflow-x:auto;
-}
+pre{padding:20px;font-family:var(--mono);font-size:12px;line-height:1.8;color:#8BA7C5;overflow-x:auto}
 pre .k{color:var(--indigo)}
 pre .s{color:#7DD3A8}
 pre .n{color:var(--accent)}
 pre .c{color:var(--text3)}
 pre .v{color:#F0A87A}
 
-/* FOOTER */
-footer{
-  position:relative;z-index:1;
-  border-top:1px solid var(--border);
-  padding:40px clamp(24px,6vw,100px);
+/* ── RESEARCH ROWS ── */
+.research-row{
   display:flex;align-items:center;justify-content:space-between;
-  max-width:100%;
+  padding:10px 14px;border-radius:6px;
+  border:1px solid transparent;transition:background .12s,border-color .12s;gap:12px;
 }
-.footer-left{
-  display:flex;flex-direction:column;gap:6px;
+.research-row:hover{background:rgba(14,165,233,0.03);border-color:var(--border)}
+.rr-left{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+.rr-name{font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rr-meta{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.02em}
+.rr-tag{font-family:var(--mono);font-size:10px;color:var(--accent);padding:2px 8px;border-radius:3px;background:var(--accent-dim);border:1px solid rgba(14,165,233,0.15);white-space:nowrap;flex-shrink:0}
+
+/* ── DEMO SECTION ── */
+.demo-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start}
+.demo-panel{border:1px solid var(--border);border-radius:8px;overflow:hidden;background:rgba(5,13,26,0.5)}
+.demo-panel-header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:rgba(2,8,17,0.4)}
+.demo-panel-body{padding:24px}
+.file-label-text{display:block;font-size:11px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px}
+.file-drop{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  border:1px dashed var(--border2);border-radius:6px;padding:24px;
+  cursor:pointer;transition:border-color .15s,background .15s;background:rgba(2,8,17,0.4);
+  position:relative;
 }
-.footer-wordmark{
-  font-size:14px;font-weight:700;color:var(--text);
-  letter-spacing:-0.3px;
+.file-drop:hover{border-color:rgba(14,165,233,0.4);background:rgba(14,165,233,0.03)}
+.file-drop.has-file{border-color:rgba(34,197,94,0.3);background:rgba(34,197,94,0.03)}
+.file-drop-text{font-size:12px;color:var(--text3)}
+.file-drop-name{font-family:var(--mono);font-size:10.5px;color:var(--accent)}
+.file-drop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.run-btn{
+  width:100%;padding:11px;border-radius:7px;background:var(--accent);
+  border:none;font-size:13.5px;font-weight:700;color:#fff;cursor:pointer;
+  transition:background .15s;font-family:var(--sans);letter-spacing:-0.2px;
+  margin-top:16px;
 }
-.footer-meta{
-  font-family:var(--mono);font-size:10.5px;color:var(--text3);
-  letter-spacing:0.04em;
+.run-btn:hover:not(:disabled){background:#0284C7}
+.run-btn:disabled{opacity:0.5;cursor:default}
+
+/* ── ACCESS REQUEST MODAL ── */
+.modal-overlay{
+  display:none;position:fixed;inset:0;z-index:1000;
+  background:rgba(2,8,17,0.85);backdrop-filter:blur(12px);
+  align-items:center;justify-content:center;padding:20px;
 }
-.footer-links{
-  display:flex;gap:24px;
+.modal-overlay.open{display:flex}
+.modal{
+  background:var(--bg1);border:1px solid var(--border2);
+  border-radius:12px;width:100%;max-width:480px;
+  overflow:hidden;position:relative;
 }
-.footer-links a{
-  font-size:12.5px;color:var(--text3);text-decoration:none;
-  transition:color .12s;letter-spacing:-0.1px;
+.modal-header{
+  padding:24px 28px 20px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
 }
+.modal-title{font-size:18px;font-weight:800;letter-spacing:-0.5px;color:var(--text)}
+.modal-close{
+  background:none;border:none;color:var(--text3);cursor:pointer;
+  font-size:20px;padding:4px;line-height:1;transition:color .12s;
+}
+.modal-close:hover{color:var(--text)}
+.modal-body{padding:28px}
+.form-group{margin-bottom:18px}
+.form-label{display:block;font-size:11.5px;font-weight:600;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:7px}
+.form-input{
+  width:100%;padding:10px 14px;border-radius:7px;
+  border:1px solid var(--border2);background:rgba(2,8,17,0.6);
+  font-size:13.5px;color:var(--text);font-family:var(--sans);
+  outline:none;transition:border-color .12s;
+}
+.form-input:focus{border-color:var(--accent)}
+.form-input::placeholder{color:var(--text3)}
+textarea.form-input{resize:vertical;min-height:80px;line-height:1.6}
+.form-submit{
+  width:100%;padding:11px;border-radius:7px;background:var(--accent);
+  border:none;font-size:14px;font-weight:700;color:#fff;
+  cursor:pointer;transition:background .15s;font-family:var(--sans);
+  margin-top:4px;
+}
+.form-submit:hover:not(:disabled){background:#0284C7}
+.form-submit:disabled{opacity:0.6;cursor:default}
+.form-success{
+  text-align:center;padding:20px 0 8px;
+  display:none;
+}
+.form-success-icon{font-size:36px;margin-bottom:12px}
+.form-success h3{font-size:17px;font-weight:700;color:var(--text);margin-bottom:8px}
+.form-success p{font-size:13.5px;color:var(--text2);line-height:1.6}
+.form-success .req-id{font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:12px}
+
+/* ── FOOTER ── */
+footer{
+  position:relative;z-index:1;border-top:1px solid var(--border);
+  padding:40px clamp(16px,6vw,100px);
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:16px;max-width:100%;
+}
+.footer-left{display:flex;flex-direction:column;gap:6px}
+.footer-wordmark{font-size:14px;font-weight:700;color:var(--text);letter-spacing:-0.3px}
+.footer-meta{font-family:var(--mono);font-size:10.5px;color:var(--text3);letter-spacing:0.04em}
+.footer-links{display:flex;gap:20px;flex-wrap:wrap}
+.footer-links a{font-size:12.5px;color:var(--text3);text-decoration:none;transition:color .12s;letter-spacing:-0.1px}
 .footer-links a:hover{color:var(--text2)}
 
-/* Dividers */
-.section-divider{
-  position:relative;z-index:1;
-  height:1px;background:var(--border);
-  max-width:1360px;margin:0 auto;
+/* ── DIVIDERS ── */
+.section-divider{position:relative;z-index:1;height:1px;background:var(--border);max-width:1360px;margin:0 auto}
+
+/* ── MOBILE RESPONSIVE ── */
+@media (max-width:900px){
+  .hero{grid-template-columns:1fr;gap:48px;padding-top:90px;min-height:auto;padding-bottom:60px}
+  .hero-right{order:-1}
+  .hero-metrics{grid-template-columns:repeat(3,1fr)}
+  .pipeline-track{flex-direction:column}
+  .p-module{border-right:none;border-bottom:1px solid var(--border);min-width:unset}
+  .p-module:last-child{border-bottom:none}
+  .metrics-strip{grid-template-columns:1fr 1fr}
+  .ms-item:nth-child(2){border-right:none}
+  .ms-item:nth-child(1),.ms-item:nth-child(2){border-bottom:1px solid var(--border)}
+  .api-grid{grid-template-columns:1fr}
+  .demo-grid{grid-template-columns:1fr}
+  .sec-sub{display:none}
+  .threat-table{display:block;overflow-x:auto}
+}
+@media (max-width:680px){
+  nav{padding:0 16px}
+  .nav-links{display:none}
+  .sys-status{display:none}
+  .hero-metrics{grid-template-columns:1fr}
+  .hm-item{border-right:none;border-bottom:1px solid var(--border)}
+  .hm-item:last-child{border-bottom:none}
+  .metrics-strip{grid-template-columns:1fr}
+  .ms-item{border-right:none;border-bottom:1px solid var(--border)}
+  .ms-item:last-child{border-bottom:none}
+  section{padding:60px 16px}
+  .sec-head{flex-wrap:wrap}
+  h1{letter-spacing:-1.5px}
+  .hero-actions{flex-direction:column;align-items:stretch}
+  .btn-primary,.btn-secondary{justify-content:center}
+  .feed-item{grid-template-columns:20px 1fr auto;gap:6px}
+  .fi-id,.fi-module{display:none}
+  footer{flex-direction:column;gap:20px}
+  .footer-links{gap:16px}
+}
+@media (max-width:480px){
+  .pm-flow{flex-wrap:wrap;gap:8px}
+  .pm-connector{display:none}
+  .pm-node{flex:0 0 calc(25% - 8px)}
 }
 </style>
 </head>
 <body>
 
 <canvas id="bg"></canvas>
+
+<!-- ACCESS REQUEST MODAL -->
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Request API Access</span>
+      <button class="modal-close" onclick="closeModal()">&#215;</button>
+    </div>
+    <div class="modal-body">
+      <div id="form-fields">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input class="form-input" id="req-name" type="text" placeholder="Jane Smith" autocomplete="name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Work Email</label>
+          <input class="form-input" id="req-email" type="email" placeholder="jane@company.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Organization</label>
+          <input class="form-input" id="req-org" type="text" placeholder="Acme Corp">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Use Case</label>
+          <textarea class="form-input" id="req-usecase" placeholder="Describe how you plan to use SentinelID..."></textarea>
+        </div>
+        <div id="form-error" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none"></div>
+        <button class="form-submit" id="req-submit" onclick="submitAccessRequest()">Submit Request</button>
+      </div>
+      <div class="form-success" id="form-success">
+        <div class="form-success-icon" style="color:var(--green)">&#10003;</div>
+        <h3>Request Received</h3>
+        <p>We will review your request and respond within 2 business days.</p>
+        <div class="req-id" id="req-id-display"></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <nav>
   <a href="#" class="logo">
@@ -610,44 +511,35 @@ footer{
     <a href="#pipeline">Architecture</a>
     <a href="#threats">Threat Matrix</a>
     <a href="#api">API</a>
-    <a href="#">Research</a>
+    <a href="#research">Research</a>
   </div>
   <div class="nav-right">
-    <div class="sys-status"><span class="sys-dot"></span>ALL SYSTEMS NOMINAL</div>
+    <div class="sys-status"><span class="sys-dot"></span><span id="status-text">CONNECTING</span></div>
     <a href="#api" class="btn-outline">Documentation</a>
-    <a href="#" class="btn-cta">Request Access</a>
+    <button class="btn-cta" onclick="openModal()">Request Access</button>
   </div>
 </nav>
 
 <main>
 
 <!-- HERO -->
-<div style="position:relative;z-index:1;padding-top:0;border-bottom:1px solid rgba(255,255,255,0.06)">
+<div style="position:relative;z-index:1;border-bottom:1px solid rgba(255,255,255,0.06)">
 <div class="hero">
   <div class="hero-left">
     <div class="hero-tag">Biometric Identity Infrastructure</div>
-    <h1>Identity verification that stops what others miss.</h1>
+    <h1>Identity verification that stops what others <em>miss.</em></h1>
     <p class="hero-desc">A seven-layer biometric pipeline covering liveness, deepfake detection, face recognition, behavioral analysis, and document verification. Built to ISO 30107-3.</p>
     <div class="hero-actions">
       <a href="#pipeline" class="btn-primary">
         See Architecture
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </a>
-      <a href="#api" class="btn-secondary">View API Reference</a>
+      <a href="#demo" class="btn-secondary">Try Live Demo</a>
     </div>
     <div class="hero-metrics">
-      <div class="hm-item">
-        <div class="hm-num">0.003<span> ACER</span></div>
-        <div class="hm-label">ISO 30107-3</div>
-      </div>
-      <div class="hm-item">
-        <div class="hm-num">99.81<span>%</span></div>
-        <div class="hm-label">Face TAR @ FAR 1e-6</div>
-      </div>
-      <div class="hm-item">
-        <div class="hm-num">340<span>ms</span></div>
-        <div class="hm-label">End-to-End Latency</div>
-      </div>
+      <div class="hm-item"><div class="hm-num" id="hm-acer">0.003<span> ACER</span></div><div class="hm-label">ISO 30107-3</div></div>
+      <div class="hm-item"><div class="hm-num" id="hm-tar">99.81<span>%</span></div><div class="hm-label">Face TAR @ FAR 1e-6</div></div>
+      <div class="hm-item"><div class="hm-num" id="hm-lat">340<span>ms</span></div><div class="hm-label">End-to-End Latency</div></div>
     </div>
   </div>
   <div class="hero-right">
@@ -659,19 +551,19 @@ footer{
     <div class="pipeline-mini">
       <div class="pm-label">Pipeline State</div>
       <div class="pm-flow" id="pflow">
-        <div class="pm-node done" data-label="M1"><div class="pm-node-circle">M1</div><div class="pm-node-label">LIVE</div></div>
+        <div class="pm-node done"><div class="pm-node-circle">M1</div><div class="pm-node-label">LIVE</div></div>
         <div class="pm-connector done"></div>
-        <div class="pm-node done" data-label="M2"><div class="pm-node-circle">M2</div><div class="pm-node-label">DEEP</div></div>
+        <div class="pm-node done"><div class="pm-node-circle">M2</div><div class="pm-node-label">DEEP</div></div>
         <div class="pm-connector done"></div>
-        <div class="pm-node done" data-label="M3"><div class="pm-node-circle">M3</div><div class="pm-node-label">FACE</div></div>
+        <div class="pm-node done"><div class="pm-node-circle">M3</div><div class="pm-node-label">FACE</div></div>
         <div class="pm-connector done"></div>
-        <div class="pm-node active" data-label="M4"><div class="pm-node-circle">M4</div><div class="pm-node-label">BEHV</div></div>
+        <div class="pm-node active"><div class="pm-node-circle">M4</div><div class="pm-node-label">BEHV</div></div>
         <div class="pm-connector"></div>
-        <div class="pm-node" data-label="M5"><div class="pm-node-circle">M5</div><div class="pm-node-label">DOC</div></div>
+        <div class="pm-node"><div class="pm-node-circle">M5</div><div class="pm-node-label">DOC</div></div>
         <div class="pm-connector"></div>
-        <div class="pm-node" data-label="M6"><div class="pm-node-circle">M6</div><div class="pm-node-label">FUSE</div></div>
+        <div class="pm-node"><div class="pm-node-circle">M6</div><div class="pm-node-label">FUSE</div></div>
         <div class="pm-connector"></div>
-        <div class="pm-node" data-label="M7"><div class="pm-node-circle">M7</div><div class="pm-node-label">EDGE</div></div>
+        <div class="pm-node"><div class="pm-node-circle">M7</div><div class="pm-node-label">EDGE</div></div>
       </div>
     </div>
   </div>
@@ -686,83 +578,13 @@ footer{
     <p class="sec-sub">Seven specialized modules in a cascading decision architecture. Each can operate independently or in ensemble.</p>
   </div>
   <div class="pipeline-track">
-    <div class="p-module">
-      <div class="pm-idx">M1 / LIVENESS</div>
-      <div class="pm-name">Passive Liveness Detection</div>
-      <div class="pm-arch">EfficientNet-B4 + Temporal CNN</div>
-      <div class="pm-score">ACER 0.003</div>
-      <div class="pm-tags">
-        <span class="pm-tag">CelebA-Spoof</span>
-        <span class="pm-tag">NUAA</span>
-        <span class="pm-tag">ISO 30107-3</span>
-      </div>
-    </div>
-    <div class="p-module">
-      <div class="pm-idx">M2 / DEEPFAKE</div>
-      <div class="pm-name">Synthetic Media Detection</div>
-      <div class="pm-arch">Xception + Frequency Analysis</div>
-      <div class="pm-score">AUC 0.9972</div>
-      <div class="pm-tags">
-        <span class="pm-tag">FaceForensics++</span>
-        <span class="pm-tag">DFDC</span>
-        <span class="pm-tag">Celeb-DF</span>
-      </div>
-    </div>
-    <div class="p-module">
-      <div class="pm-idx">M3 / RECOGNITION</div>
-      <div class="pm-name">Face Embedding & Matching</div>
-      <div class="pm-arch">ArcFace ResNet-100</div>
-      <div class="pm-score">TAR 99.81%</div>
-      <div class="pm-tags">
-        <span class="pm-tag">MS-Celeb-1M</span>
-        <span class="pm-tag">FAISS Index</span>
-        <span class="pm-tag">LFW</span>
-      </div>
-    </div>
-    <div class="p-module">
-      <div class="pm-idx">M4 / BEHAVIORAL</div>
-      <div class="pm-name">Interaction Graph Analysis</div>
-      <div class="pm-arch">Graph Neural Network</div>
-      <div class="pm-score">ACC 0.9834</div>
-      <div class="pm-tags">
-        <span class="pm-tag">Session GNN</span>
-        <span class="pm-tag">Keystroke</span>
-        <span class="pm-tag">Gaze Tracking</span>
-      </div>
-    </div>
-    <div class="p-module">
-      <div class="pm-idx">M5 / DOCUMENT</div>
-      <div class="pm-name">ID Document Verification</div>
-      <div class="pm-arch">LayoutLM + ViT-B/16</div>
-      <div class="pm-score">ACC 100%</div>
-      <div class="pm-tags">
-        <span class="pm-tag">MIDV-500</span>
-        <span class="pm-tag">OCR</span>
-        <span class="pm-tag">Forgery Det.</span>
-      </div>
-    </div>
-    <div class="p-module">
-      <div class="pm-idx">M6 / FUSION</div>
-      <div class="pm-name">Score-Level Ensemble</div>
-      <div class="pm-arch">Platt Calibration + MLP</div>
-      <div class="pm-score">AUC 1.000</div>
-      <div class="pm-tags">
-        <span class="pm-tag">Platt Scaling</span>
-        <span class="pm-tag">5-Score Fusion</span>
-        <span class="pm-tag">Uncertainty</span>
-      </div>
-    </div>
-    <div class="p-module">
-      <div class="pm-idx">M7 / EDGE</div>
-      <div class="pm-name">Edge-Optimized Distillation</div>
-      <div class="pm-arch">MobileNetV3-S (Student)</div>
-      <div class="pm-score">3.2MB / 28ms</div>
-      <div class="pm-tags">
-        <span class="pm-tag">ONNX Export</span>
-        <span class="pm-tag">INT8 Quant</span>
-        <span class="pm-tag">ARM Deploy</span>
-      </div>
-    </div>
+    <div class="p-module"><div class="pm-idx">M1 / LIVENESS</div><div class="pm-name">Passive Liveness Detection</div><div class="pm-arch">EfficientNet-B4 + Temporal CNN</div><div class="pm-score">ACER 0.003</div><div class="pm-tags"><span class="pm-tag">CelebA-Spoof</span><span class="pm-tag">NUAA</span><span class="pm-tag">ISO 30107-3</span></div></div>
+    <div class="p-module"><div class="pm-idx">M2 / DEEPFAKE</div><div class="pm-name">Synthetic Media Detection</div><div class="pm-arch">Xception + Frequency Analysis</div><div class="pm-score">AUC 0.9972</div><div class="pm-tags"><span class="pm-tag">FaceForensics++</span><span class="pm-tag">DFDC</span><span class="pm-tag">Celeb-DF</span></div></div>
+    <div class="p-module"><div class="pm-idx">M3 / RECOGNITION</div><div class="pm-name">Face Embedding & Matching</div><div class="pm-arch">ArcFace ResNet-100</div><div class="pm-score">TAR 99.81%</div><div class="pm-tags"><span class="pm-tag">MS-Celeb-1M</span><span class="pm-tag">FAISS Index</span><span class="pm-tag">LFW</span></div></div>
+    <div class="p-module"><div class="pm-idx">M4 / BEHAVIORAL</div><div class="pm-name">Interaction Graph Analysis</div><div class="pm-arch">Graph Neural Network</div><div class="pm-score">ACC 0.9834</div><div class="pm-tags"><span class="pm-tag">Session GNN</span><span class="pm-tag">Keystroke</span><span class="pm-tag">Gaze Tracking</span></div></div>
+    <div class="p-module"><div class="pm-idx">M5 / DOCUMENT</div><div class="pm-name">ID Document Verification</div><div class="pm-arch">LayoutLM + ViT-B/16</div><div class="pm-score">ACC 100%</div><div class="pm-tags"><span class="pm-tag">MIDV-500</span><span class="pm-tag">OCR</span><span class="pm-tag">Forgery Det.</span></div></div>
+    <div class="p-module"><div class="pm-idx">M6 / FUSION</div><div class="pm-name">Score-Level Ensemble</div><div class="pm-arch">Platt Calibration + MLP</div><div class="pm-score">AUC 1.000</div><div class="pm-tags"><span class="pm-tag">Platt Scaling</span><span class="pm-tag">5-Score Fusion</span><span class="pm-tag">Uncertainty</span></div></div>
+    <div class="p-module"><div class="pm-idx">M7 / EDGE</div><div class="pm-name">Edge-Optimized Distillation</div><div class="pm-arch">MobileNetV3-S (Student)</div><div class="pm-score">3.2MB / 28ms</div><div class="pm-tags"><span class="pm-tag">ONNX Export</span><span class="pm-tag">INT8 Quant</span><span class="pm-tag">ARM Deploy</span></div></div>
   </div>
 </section>
 
@@ -771,26 +593,10 @@ footer{
 <!-- METRICS -->
 <section style="padding-top:80px;padding-bottom:80px">
   <div class="metrics-strip">
-    <div class="ms-item">
-      <div class="ms-num">0.003<sup>ACER</sup></div>
-      <div class="ms-label">Attack Classification Error Rate</div>
-      <div class="ms-sub">ISO 30107-3 STANDARD SET</div>
-    </div>
-    <div class="ms-item">
-      <div class="ms-num">7</div>
-      <div class="ms-label">Independent Detection Modules</div>
-      <div class="ms-sub">CASCADE + ENSEMBLE</div>
-    </div>
-    <div class="ms-item">
-      <div class="ms-num">28<sup>ms</sup></div>
-      <div class="ms-label">Edge Inference Latency (ARM)</div>
-      <div class="ms-sub">MOBILENETV3 DISTILLED</div>
-    </div>
-    <div class="ms-item">
-      <div class="ms-num">340<sup>ms</sup></div>
-      <div class="ms-label">Full Pipeline Latency</div>
-      <div class="ms-sub">GPU SERVER — ALL 7 MODULES</div>
-    </div>
+    <div class="ms-item"><div class="ms-num" id="ms-acer">0.003<sup>ACER</sup></div><div class="ms-label">Attack Classification Error Rate</div><div class="ms-sub">ISO 30107-3 STANDARD SET</div></div>
+    <div class="ms-item"><div class="ms-num">7</div><div class="ms-label">Independent Detection Modules</div><div class="ms-sub">CASCADE + ENSEMBLE</div></div>
+    <div class="ms-item"><div class="ms-num" id="ms-edge">28<sup>ms</sup></div><div class="ms-label">Edge Inference Latency (ARM)</div><div class="ms-sub">MOBILENETV3 DISTILLED</div></div>
+    <div class="ms-item"><div class="ms-num" id="ms-full">340<sup>ms</sup></div><div class="ms-label">Full Pipeline Latency</div><div class="ms-sub">GPU SERVER — ALL 7 MODULES</div></div>
   </div>
 </section>
 
@@ -803,68 +609,20 @@ footer{
     <h2 class="sec-title">Threat Coverage Matrix</h2>
     <p class="sec-sub">Attack vectors covered end-to-end, with the module responsible for each detection.</p>
   </div>
+  <div style="overflow-x:auto">
   <table class="threat-table">
-    <thead>
-      <tr>
-        <th>Attack Vector</th>
-        <th>Description</th>
-        <th>Detected By</th>
-        <th>Performance</th>
-        <th>Status</th>
-      </tr>
-    </thead>
+    <thead><tr><th>Attack Vector</th><th>Description</th><th>Detected By</th><th>Performance</th><th>Status</th></tr></thead>
     <tbody>
-      <tr>
-        <td><span class="tt-attack">Print & Replay</span></td>
-        <td><span class="tt-desc">Printed photos, screen replays, photo cutouts used against camera sensor</span></td>
-        <td><span class="tt-module">M1 Liveness</span></td>
-        <td><span class="tt-perf">APCER 0.001, BPCER 0.004</span></td>
-        <td><span class="badge-block">BLOCKED</span></td>
-      </tr>
-      <tr>
-        <td><span class="tt-attack">GAN Deepfake</span></td>
-        <td><span class="tt-desc">Face-swapped video generated by StyleGAN, SimSwap, FaceShifter, Deepfakes</span></td>
-        <td><span class="tt-module">M2 Deepfake</span></td>
-        <td><span class="tt-perf">AUC 0.9972</span></td>
-        <td><span class="badge-block">BLOCKED</span></td>
-      </tr>
-      <tr>
-        <td><span class="tt-attack">3D Silicone Mask</span></td>
-        <td><span class="tt-desc">High-fidelity 3D-printed or silicone masks worn over attacker's face</span></td>
-        <td><span class="tt-module">M1 + M2</span></td>
-        <td><span class="tt-perf">ACER 0.003</span></td>
-        <td><span class="badge-block">BLOCKED</span></td>
-      </tr>
-      <tr>
-        <td><span class="tt-attack">Document Forgery</span></td>
-        <td><span class="tt-desc">Tampered passports, ID cards, digitally altered photographs on documents</span></td>
-        <td><span class="tt-module">M5 Document</span></td>
-        <td><span class="tt-perf">ACC 100% on MIDV-500</span></td>
-        <td><span class="badge-block">BLOCKED</span></td>
-      </tr>
-      <tr>
-        <td><span class="tt-attack">Re-enrollment Fraud</span></td>
-        <td><span class="tt-desc">Stolen biometric re-enrolled under different identity to gain persistent access</span></td>
-        <td><span class="tt-module">M3 + FAISS</span></td>
-        <td><span class="tt-perf">TAR 99.81% @ FAR 1e-6</span></td>
-        <td><span class="badge-block">BLOCKED</span></td>
-      </tr>
-      <tr>
-        <td><span class="tt-attack">Adversarial Injection</span></td>
-        <td><span class="tt-desc">Camera bypass via virtual camera, MITM stream substitution, API-level frame injection</span></td>
-        <td><span class="tt-module">M4 Behavioral</span></td>
-        <td><span class="tt-perf">Anomaly F1 0.9834</span></td>
-        <td><span class="badge-block">BLOCKED</span></td>
-      </tr>
-      <tr>
-        <td><span class="tt-attack">Legitimate User</span></td>
-        <td><span class="tt-desc">Enrolled user, genuine document, natural interaction pattern</span></td>
-        <td><span class="tt-module">M6 Fusion</span></td>
-        <td><span class="tt-perf">FRR 0.19%</span></td>
-        <td><span class="badge-detect">PASSED</span></td>
-      </tr>
+      <tr><td><span class="tt-attack">Print &amp; Replay</span></td><td><span class="tt-desc">Printed photos, screen replays, photo cutouts used against camera sensor</span></td><td><span class="tt-module">M1 Liveness</span></td><td><span class="tt-perf">APCER 0.001, BPCER 0.004</span></td><td><span class="badge-block">BLOCKED</span></td></tr>
+      <tr><td><span class="tt-attack">GAN Deepfake</span></td><td><span class="tt-desc">Face-swapped video generated by StyleGAN, SimSwap, FaceShifter, Deepfakes</span></td><td><span class="tt-module">M2 Deepfake</span></td><td><span class="tt-perf">AUC 0.9972</span></td><td><span class="badge-block">BLOCKED</span></td></tr>
+      <tr><td><span class="tt-attack">3D Silicone Mask</span></td><td><span class="tt-desc">High-fidelity 3D-printed or silicone masks worn over attacker's face</span></td><td><span class="tt-module">M1 + M2</span></td><td><span class="tt-perf">ACER 0.003</span></td><td><span class="badge-block">BLOCKED</span></td></tr>
+      <tr><td><span class="tt-attack">Document Forgery</span></td><td><span class="tt-desc">Tampered passports, ID cards, digitally altered photographs on documents</span></td><td><span class="tt-module">M5 Document</span></td><td><span class="tt-perf">ACC 100% on MIDV-500</span></td><td><span class="badge-block">BLOCKED</span></td></tr>
+      <tr><td><span class="tt-attack">Re-enrollment Fraud</span></td><td><span class="tt-desc">Stolen biometric re-enrolled under different identity to gain persistent access</span></td><td><span class="tt-module">M3 + FAISS</span></td><td><span class="tt-perf">TAR 99.81% @ FAR 1e-6</span></td><td><span class="badge-block">BLOCKED</span></td></tr>
+      <tr><td><span class="tt-attack">Adversarial Injection</span></td><td><span class="tt-desc">Camera bypass via virtual camera, MITM stream substitution, API-level frame injection</span></td><td><span class="tt-module">M4 Behavioral</span></td><td><span class="tt-perf">Anomaly F1 0.9834</span></td><td><span class="badge-block">BLOCKED</span></td></tr>
+      <tr><td><span class="tt-attack">Legitimate User</span></td><td><span class="tt-desc">Enrolled user, genuine document, natural interaction pattern</span></td><td><span class="tt-module">M6 Fusion</span></td><td><span class="tt-perf">FRR 0.19%</span></td><td><span class="badge-detect">PASSED</span></td></tr>
     </tbody>
   </table>
+  </div>
 </section>
 
 <div class="section-divider"></div>
@@ -881,39 +639,21 @@ footer{
       <h2>Integrate in minutes.</h2>
       <p>Submit a biometric payload — image, document scan, behavioral log — and receive a structured confidence object from each module plus a fused decision. All communication over mTLS.</p>
       <div class="endpoint-list">
-        <div class="ep">
-          <span class="ep-method post">POST</span>
-          <span class="ep-path">/v1/verify/full</span>
-          <span class="ep-desc">7-module pipeline</span>
-        </div>
-        <div class="ep">
-          <span class="ep-method post">POST</span>
-          <span class="ep-path">/v1/verify/liveness</span>
-          <span class="ep-desc">M1 only</span>
-        </div>
-        <div class="ep">
-          <span class="ep-method post">POST</span>
-          <span class="ep-path">/v1/verify/deepfake</span>
-          <span class="ep-desc">M2 only</span>
-        </div>
-        <div class="ep">
-          <span class="ep-method post">POST</span>
-          <span class="ep-path">/v1/enroll</span>
-          <span class="ep-desc">Register biometric template</span>
-        </div>
-        <div class="ep">
-          <span class="ep-method get">GET</span>
-          <span class="ep-path">/v1/session/{id}</span>
-          <span class="ep-desc">Retrieve session result</span>
-        </div>
+        <div class="ep"><span class="ep-method post">POST</span><span class="ep-path">/v1/verify/full</span><span class="ep-desc">7-module pipeline</span></div>
+        <div class="ep"><span class="ep-method post">POST</span><span class="ep-path">/v1/verify/liveness</span><span class="ep-desc">M1 only</span></div>
+        <div class="ep"><span class="ep-method post">POST</span><span class="ep-path">/v1/verify/deepfake</span><span class="ep-desc">M2 only</span></div>
+        <div class="ep"><span class="ep-method post">POST</span><span class="ep-path">/v1/enroll</span><span class="ep-desc">Register biometric template</span></div>
+        <div class="ep"><span class="ep-method get">GET</span><span class="ep-path">/v1/session/{id}</span><span class="ep-desc">Retrieve session result</span></div>
+        <div class="ep"><span class="ep-method get">GET</span><span class="ep-path">/v1/stats</span><span class="ep-desc">Live telemetry</span></div>
+        <div class="ep"><span class="ep-method get">GET</span><span class="ep-path">/ws/feed</span><span class="ep-desc">WebSocket event stream</span></div>
       </div>
     </div>
     <div class="code-block">
       <div class="cb-header">
         <span class="cb-lang">PYTHON — FULL VERIFICATION</span>
-        <button class="cb-copy" onclick="navigator.clipboard.writeText(document.querySelector('pre').innerText);this.textContent='Copied';setTimeout(()=>this.textContent='Copy',1400)">Copy</button>
+        <button class="cb-copy" id="copy-btn" onclick="copyCode()">Copy</button>
       </div>
-<pre><span class="k">import</span> requests
+<pre id="code-sample"><span class="k">import</span> requests
 
 resp = requests.<span class="n">post</span>(
     <span class="s">"https://sentinelid.onrender.com/v1/verify/full"</span>,
@@ -940,37 +680,93 @@ result = resp.<span class="n">json</span>()
   <div class="sec-head">
     <span class="sec-num">04</span>
     <h2 class="sec-title">Live API Demo</h2>
-    <p class="sec-sub">Upload any image and run it through the full 7-module pipeline right now.</p>
+    <p class="sec-sub">Upload a face image and optionally an ID document. Runs the full 7-module pipeline against the live backend.</p>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start">
+  <div class="demo-grid">
     <div>
-      <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;background:rgba(5,13,26,0.5)">
-        <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div class="demo-panel">
+        <div class="demo-panel-header">
           <span style="font-family:var(--mono);font-size:10.5px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase">POST /v1/verify/full</span>
           <span id="demo-status" style="font-family:var(--mono);font-size:10px;color:var(--text3)">READY</span>
         </div>
-        <div style="padding:24px">
-          <div style="margin-bottom:20px">
-            <label style="display:block;font-size:11px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px">Face Image</label>
-            <label id="face-drop" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border:1px dashed var(--border2);border-radius:6px;padding:28px;cursor:pointer;transition:border-color .15s;background:rgba(2,8,17,0.4)">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="9" r="3"/><path d="M6.5 20c0-2.5 2.5-4 5.5-4s5.5 1.5 5.5 4"/></svg>
-              <span style="font-size:12px;color:var(--text3)">Click to select or drop image</span>
-              <span id="face-name" style="font-family:var(--mono);font-size:10.5px;color:var(--accent)"></span>
-              <input type="file" id="face-file" accept="image/*" style="display:none">
+        <div class="demo-panel-body">
+          <div style="margin-bottom:16px">
+            <span class="file-label-text">Face Image <span style="color:var(--red)">*</span></span>
+            <label class="file-drop" id="face-drop">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="9" r="3"/><path d="M6.5 20c0-2.5 2.5-4 5.5-4s5.5 1.5 5.5 4"/></svg>
+              <span class="file-drop-text">Click to select or drop image</span>
+              <span class="file-drop-name" id="face-name"></span>
+              <input type="file" id="face-file" accept="image/*">
             </label>
           </div>
-          <button id="run-btn" onclick="runDemo()" style="width:100%;padding:11px;border-radius:7px;background:var(--accent);border:none;font-size:13.5px;font-weight:700;color:#fff;cursor:pointer;transition:background .15s;font-family:var(--sans);letter-spacing:-0.2px">
-            Run Verification
-          </button>
+          <div style="margin-bottom:4px">
+            <span class="file-label-text">ID Document <span style="color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">optional</span></span>
+            <label class="file-drop" id="doc-drop">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 7h6M9 11h6M9 15h4"/></svg>
+              <span class="file-drop-text">Click to select document image</span>
+              <span class="file-drop-name" id="doc-name"></span>
+              <input type="file" id="doc-file" accept="image/*">
+            </label>
+          </div>
+          <button class="run-btn" id="run-btn" onclick="runDemo()">Run Verification</button>
         </div>
       </div>
     </div>
-    <div id="demo-result" style="border:1px solid var(--border);border-radius:8px;overflow:hidden;background:rgba(5,13,26,0.5);min-height:200px">
-      <div style="padding:16px 20px;border-bottom:1px solid var(--border)">
+    <div id="demo-result" class="demo-panel" style="min-height:200px">
+      <div class="demo-panel-header">
         <span style="font-family:var(--mono);font-size:10.5px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase">Response</span>
+        <span id="demo-latency" style="font-family:var(--mono);font-size:10px;color:var(--text3)"></span>
       </div>
       <div id="demo-body" style="padding:20px;font-family:var(--mono);font-size:12px;color:var(--text3);line-height:1.8">
         Awaiting submission...
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- RESEARCH -->
+<section id="research" style="padding-bottom:120px">
+  <div class="sec-head">
+    <span class="sec-num">05</span>
+    <h2 class="sec-title">Research Foundation</h2>
+    <p class="sec-sub">Datasets, benchmarks, and papers underpinning each module's architecture and evaluation.</p>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px">
+    <div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)">Training Datasets</div>
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <div class="research-row"><div class="rr-left"><span class="rr-name">CelebA-Spoof</span><span class="rr-meta">625k images — 10 spoof types</span></div><span class="rr-tag">M1 Liveness</span></div>
+        <div class="research-row"><div class="rr-left"><span class="rr-name">NUAA Imposter</span><span class="rr-meta">12,614 frames — print attack</span></div><span class="rr-tag">M1 Liveness</span></div>
+        <div class="research-row"><div class="rr-left"><span class="rr-name">FaceForensics++</span><span class="rr-meta">1000 videos — 5 manipulation types</span></div><span class="rr-tag">M2 Deepfake</span></div>
+        <div class="research-row"><div class="rr-left"><span class="rr-name">DFDC (Deepfake Detection)</span><span class="rr-meta">100k+ clips — Facebook/AWS challenge</span></div><span class="rr-tag">M2 Deepfake</span></div>
+        <div class="research-row"><div class="rr-left"><span class="rr-name">Celeb-DF v2</span><span class="rr-meta">6000 videos — high-quality deepfakes</span></div><span class="rr-tag">M2 Deepfake</span></div>
+        <div class="research-row"><div class="rr-left"><span class="rr-name">MS-Celeb-1M</span><span class="rr-meta">10M images — 100k identities</span></div><span class="rr-tag">M3 Face</span></div>
+        <div class="research-row"><div class="rr-left"><span class="rr-name">LFW (Labeled Faces in Wild)</span><span class="rr-meta">13,233 images — verification benchmark</span></div><span class="rr-tag">M3 Face</span></div>
+        <div class="research-row"><div class="rr-left"><span class="rr-name">MIDV-500</span><span class="rr-meta">500 ID document clips — 50 doc types</span></div><span class="rr-tag">M5 Document</span></div>
+      </div>
+    </div>
+    <div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)">Papers &amp; Standards</div>
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <div class="research-row"><div class="rr-left"><span class="rr-name">ArcFace: Additive Angular Margin Loss</span><span class="rr-meta">Deng et al. — CVPR 2019</span></div><span class="rr-tag">M3</span></div>
+        <div class="research-row"><div class="rr-left"><span class="rr-name">FaceForensics++: Learning to Detect</span><span class="rr-meta">Rossler et al. — ICCV 2019</span></div><span class="rr-tag">M2</span></div>
+        <div class="research-row"><div class="rr-left"><span class="rr-name">EfficientNet: Rethinking Model Scaling</span><span class="rr-meta">Tan &amp; Le — ICML 2019</span></div><span class="rr-tag">M1</span></div>
+        <div class="research-row"><div class="rr-left"><span class="rr-name">Searching for MobileNetV3</span><span class="rr-meta">Howard et al. — ICCV 2019</span></div><span class="rr-tag">M7</span></div>
+        <div class="research-row"><div class="rr-left"><span class="rr-name">LayoutLM: Pre-training for Document AI</span><span class="rr-meta">Xu et al. — KDD 2020</span></div><span class="rr-tag">M5</span></div>
+        <div class="research-row"><div class="rr-left"><span class="rr-name">ISO/IEC 30107-3:2023</span><span class="rr-meta">Biometric presentation attack detection — Part 3</span></div><span class="rr-tag">Standard</span></div>
+        <div class="research-row"><div class="rr-left"><span class="rr-name">FAISS: Billion-Scale Similarity Search</span><span class="rr-meta">Johnson et al. — IEEE TPAMI 2021</span></div><span class="rr-tag">M3</span></div>
+        <div class="research-row"><div class="rr-left"><span class="rr-name">Hinton: Distilling Knowledge in NN</span><span class="rr-meta">Hinton et al. — NeurIPS 2014</span></div><span class="rr-tag">M7</span></div>
+      </div>
+      <div style="margin-top:24px;padding:20px;border:1px solid var(--border);border-radius:8px;background:rgba(5,13,26,0.5)">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:14px">Benchmark Results</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div><div style="font-family:var(--mono);font-size:18px;color:var(--text);font-weight:400;letter-spacing:-0.5px">0.9972</div><div style="font-size:11.5px;color:var(--text2);margin-top:2px">AUC-ROC on Celeb-DF</div><div style="font-family:var(--mono);font-size:9.5px;color:var(--text3);margin-top:2px;letter-spacing:0.04em">M2 DEEPFAKE</div></div>
+          <div><div style="font-family:var(--mono);font-size:18px;color:var(--text);font-weight:400;letter-spacing:-0.5px">99.81%</div><div style="font-size:11.5px;color:var(--text2);margin-top:2px">TAR @ FAR 1e-6 on LFW</div><div style="font-family:var(--mono);font-size:9.5px;color:var(--text3);margin-top:2px;letter-spacing:0.04em">M3 FACE RECOGNITION</div></div>
+          <div><div style="font-family:var(--mono);font-size:18px;color:var(--text);font-weight:400;letter-spacing:-0.5px">0.003</div><div style="font-size:11.5px;color:var(--text2);margin-top:2px">ACER on CelebA-Spoof</div><div style="font-family:var(--mono);font-size:9.5px;color:var(--text3);margin-top:2px;letter-spacing:0.04em">M1 LIVENESS</div></div>
+          <div><div style="font-family:var(--mono);font-size:18px;color:var(--text);font-weight:400;letter-spacing:-0.5px">100%</div><div style="font-size:11.5px;color:var(--text2);margin-top:2px">Accuracy on MIDV-500</div><div style="font-family:var(--mono);font-size:9.5px;color:var(--text3);margin-top:2px;letter-spacing:0.04em">M5 DOCUMENT</div></div>
+        </div>
       </div>
     </div>
   </div>
@@ -984,30 +780,27 @@ result = resp.<span class="n">json</span>()
     <span class="footer-meta">BIOMETRIC VERIFICATION INFRASTRUCTURE — RESEARCH BUILD</span>
   </div>
   <div class="footer-links">
-    <a href="#">Architecture</a>
-    <a href="#">API Docs</a>
-    <a href="#">ISO 30107-3</a>
-    <a href="#">GitHub</a>
+    <a href="#pipeline">Architecture</a>
+    <a href="#api">API Docs</a>
+    <a href="#research">Research</a>
+    <a href="https://github.com/Aprameya05/SentinelID" target="_blank" rel="noopener">GitHub</a>
+    <a href="ops.html">Ops Dashboard</a>
   </div>
 </footer>
 
 <script>
-// THREE.JS BACKGROUND
+// ── THREE.JS BACKGROUND ─────────────────────────────────────────────────────
 (function(){
 const W=window,canvas=document.getElementById('bg');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,1.8));
 renderer.setSize(W.innerWidth,W.innerHeight);
 renderer.setClearColor(0x020811,1);
-
 const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(60,W.innerWidth/W.innerHeight,0.1,2000);
 camera.position.set(0,0,280);
-
 let mx=0,my=0;
 document.addEventListener('mousemove',e=>{mx=(e.clientX/W.innerWidth-.5)*2;my=(e.clientY/W.innerHeight-.5)*2});
-
-// Particles
 const N=2800;
 const pg=new THREE.BufferGeometry();
 const pos=new Float32Array(N*3);
@@ -1016,84 +809,57 @@ for(let i=0;i<N;i++){
   const r=200+Math.random()*400;
   const theta=Math.random()*Math.PI*2;
   const phi=Math.acos(2*Math.random()-1);
-  pos[i*3]=r*Math.sin(phi)*Math.cos(theta);
-  pos[i*3+1]=r*Math.sin(phi)*Math.sin(theta);
-  pos[i*3+2]=r*Math.cos(phi);
+  pos[i*3]=r*Math.sin(phi)*Math.cos(theta);pos[i*3+1]=r*Math.sin(phi)*Math.sin(theta);pos[i*3+2]=r*Math.cos(phi);
   const t=Math.random();
   if(t<0.75){col[i*3]=0.04;col[i*3+1]=0.28;col[i*3+2]=0.6;}
   else{col[i*3]=0.2;col[i*3+1]=0.18;col[i*3+2]=0.5;}
 }
 pg.setAttribute('position',new THREE.BufferAttribute(pos,3));
 pg.setAttribute('color',new THREE.BufferAttribute(col,3));
-const pm=new THREE.PointsMaterial({size:1.4,vertexColors:true,transparent:true,opacity:0.55,sizeAttenuation:true});
-scene.add(new THREE.Points(pg,pm));
-
-// Wireframe sphere
+scene.add(new THREE.Points(pg,new THREE.PointsMaterial({size:1.4,vertexColors:true,transparent:true,opacity:0.55,sizeAttenuation:true})));
 const sg=new THREE.SphereGeometry(90,22,16);
-const sm=new THREE.MeshBasicMaterial({color:0x0C2A4A,wireframe:true,transparent:true,opacity:0.18});
-const sphere=new THREE.Mesh(sg,sm);
+const sphere=new THREE.Mesh(sg,new THREE.MeshBasicMaterial({color:0x0C2A4A,wireframe:true,transparent:true,opacity:0.18}));
 scene.add(sphere);
-
-// Torus rings
 const rings=[];
-const rd=[
-  {r:110,t:2.2,rx:1.2,ry:0.4,c:0x0A3A5A,op:0.22},
-  {r:140,t:1.8,rx:0.5,ry:1.1,c:0x081E38,op:0.15},
-  {r:72,t:1.4,rx:0.8,ry:0.6,c:0x1A1A50,op:0.18},
-];
-rd.forEach(d=>{
-  const g=new THREE.TorusGeometry(d.r,d.t,6,80);
-  const m=new THREE.MeshBasicMaterial({color:d.c,wireframe:true,transparent:true,opacity:d.op});
-  const mesh=new THREE.Mesh(g,m);
-  mesh.rotation.x=d.rx;mesh.rotation.y=d.ry;
-  scene.add(mesh);rings.push(mesh);
+[{r:110,t:2.2,rx:1.2,ry:0.4,c:0x0A3A5A,op:0.22},{r:140,t:1.8,rx:0.5,ry:1.1,c:0x081E38,op:0.15},{r:72,t:1.4,rx:0.8,ry:0.6,c:0x1A1A50,op:0.18}].forEach(d=>{
+  const m=new THREE.Mesh(new THREE.TorusGeometry(d.r,d.t,6,80),new THREE.MeshBasicMaterial({color:d.c,wireframe:true,transparent:true,opacity:d.op}));
+  m.rotation.x=d.rx;m.rotation.y=d.ry;scene.add(m);rings.push(m);
 });
-
-// Icosahedron
-const ig=new THREE.IcosahedronGeometry(42,1);
-const im=new THREE.MeshBasicMaterial({color:0x0D2B48,wireframe:true,transparent:true,opacity:0.2});
-const ico=new THREE.Mesh(ig,im);
+const ico=new THREE.Mesh(new THREE.IcosahedronGeometry(42,1),new THREE.MeshBasicMaterial({color:0x0D2B48,wireframe:true,transparent:true,opacity:0.2}));
 scene.add(ico);
-
 let t=0;
 function animate(){
-  requestAnimationFrame(animate);
-  t+=0.004;
+  requestAnimationFrame(animate);t+=0.004;
   sphere.rotation.y=t*0.15;sphere.rotation.x=t*0.06;
-  rings[0].rotation.z=t*0.08;
-  rings[1].rotation.x=t*0.05+1.2;
-  rings[2].rotation.y=t*0.12;
+  rings[0].rotation.z=t*0.08;rings[1].rotation.x=t*0.05+1.2;rings[2].rotation.y=t*0.12;
   ico.rotation.x=t*0.09;ico.rotation.y=t*0.14;
   camera.position.x+=(mx*14-camera.position.x)*0.035;
   camera.position.y+=(-my*10-camera.position.y)*0.035;
-  camera.lookAt(0,0,0);
-  renderer.render(scene,camera);
+  camera.lookAt(0,0,0);renderer.render(scene,camera);
 }
 animate();
-
-window.addEventListener('resize',()=>{
-  camera.aspect=W.innerWidth/W.innerHeight;camera.updateProjectionMatrix();
-  renderer.setSize(W.innerWidth,W.innerHeight);
-});
+window.addEventListener('resize',()=>{camera.aspect=W.innerWidth/W.innerHeight;camera.updateProjectionMatrix();renderer.setSize(W.innerWidth,W.innerHeight)});
 })();
 
-// ── API BASE ────────────────────────────────────────────────────────────────
+// ── CONFIG ─────────────────────────────────────────────────────────────────
 const API='https://sentinelid.onrender.com';
+const WS_URL=API.replace('https','wss')+'/ws/feed';
 
-// ── NAV HEALTH BADGE + BACKEND WARM-UP ──────────────────────────────────────
+// ── BACKEND HEALTH ─────────────────────────────────────────────────────────
 let backendReady=false;
 
 function setNavStatus(ok,msg){
   const badge=document.querySelector('.sys-status');
   const dot=document.querySelector('.sys-dot');
+  const txt=document.getElementById('status-text');
   if(ok){
-    badge.style.borderColor='rgba(34,197,94,0.2)';badge.style.background='rgba(34,197,94,0.05)';
-    dot.style.background='var(--green)';dot.style.boxShadow='0 0 6px var(--green)';
+    badge.style.cssText='border-color:rgba(34,197,94,0.2);background:rgba(34,197,94,0.05);color:var(--green)';
+    dot.style.cssText='background:var(--green);box-shadow:0 0 6px var(--green)';
   }else{
-    badge.style.borderColor='rgba(245,158,11,0.25)';badge.style.background='rgba(245,158,11,0.05)';
-    dot.style.background='var(--yellow)';dot.style.boxShadow='0 0 6px var(--yellow)';
+    badge.style.cssText='border-color:rgba(245,158,11,0.25);background:rgba(245,158,11,0.05);color:var(--yellow)';
+    dot.style.cssText='background:var(--yellow);box-shadow:0 0 6px var(--yellow)';
   }
-  badge.lastChild.textContent=msg;
+  if(txt)txt.textContent=msg;
 }
 
 function setDemoBtn(enabled,label){
@@ -1105,7 +871,7 @@ function setDemoBtn(enabled,label){
 }
 
 async function warmBackend(){
-  setNavStatus(false,'BACKEND WARMING UP');
+  setNavStatus(false,'WARMING UP');
   setDemoBtn(false,'Warming up backend...');
   let attempts=0;
   while(!backendReady){
@@ -1117,18 +883,19 @@ async function warmBackend(){
         setNavStatus(true,'ALL SYSTEMS NOMINAL');
         setDemoBtn(true,'Run Verification');
         loadMetrics();
-        seedFeed();
+        startFeed();
         return;
       }
     }catch{}
     attempts++;
     const wait=Math.min(4+attempts*2,15);
-    setNavStatus(false,`WARMING UP — retry in ${wait}s`);
+    setNavStatus(false,`WARMING UP — retry ${wait}s`);
     await new Promise(res=>setTimeout(res,wait*1000));
   }
 }
-
 warmBackend();
+
+// Periodic health check
 setInterval(async()=>{
   if(!backendReady)return;
   try{
@@ -1137,45 +904,37 @@ setInterval(async()=>{
     if(d.status!=='healthy')throw new Error();
     setNavStatus(true,'ALL SYSTEMS NOMINAL');
   }catch{
-    backendReady=false;
-    setNavStatus(false,'BACKEND OFFLINE');
-    setDemoBtn(false,'Backend offline');
-    warmBackend();
+    backendReady=false;setNavStatus(false,'BACKEND OFFLINE');
+    setDemoBtn(false,'Backend offline');warmBackend();
   }
 },30000);
 
-// ── METRICS STRIP ───────────────────────────────────────────────────────────
+// ── METRICS ────────────────────────────────────────────────────────────────
 async function loadMetrics(){
   try{
     const r=await fetch(`${API}/v1/metrics`,{signal:AbortSignal.timeout(8000)});
     const d=await r.json();
-    const els=document.querySelectorAll('.ms-num');
-    if(els.length>=4){
-      els[0].innerHTML=`${d.acer}<sup>ACER</sup>`;
-      els[1].innerHTML=`${d.modules}`;
-      els[2].innerHTML=`${d.edge_latency_ms}<sup>ms</sup>`;
-      els[3].innerHTML=`${d.full_pipeline_latency_ms}<sup>ms</sup>`;
-    }
-    const hm=document.querySelectorAll('.hm-num');
-    if(hm.length>=3){
-      hm[0].innerHTML=`${d.acer}<span> ACER</span>`;
-      hm[1].innerHTML=`${d.tar_at_far_1e6}<span>%</span>`;
-      hm[2].innerHTML=`${d.full_pipeline_latency_ms}<span>ms</span>`;
-    }
+    const set=(id,html)=>{const el=document.getElementById(id);if(el)el.innerHTML=html};
+    set('hm-acer',`${d.acer}<span> ACER</span>`);
+    set('hm-tar',`${d.tar_at_far_1e6}<span>%</span>`);
+    set('hm-lat',`${d.full_pipeline_latency_ms}<span>ms</span>`);
+    set('ms-acer',`${d.acer}<sup>ACER</sup>`);
+    set('ms-edge',`${d.edge_latency_ms}<sup>ms</sup>`);
+    set('ms-full',`${d.full_pipeline_latency_ms}<sup>ms</sup>`);
   }catch{}
 }
 
-// ── LIVE VERIFICATION FEED ──────────────────────────────────────────────────
+// ── WEBSOCKET FEED ─────────────────────────────────────────────────────────
 const feed=document.getElementById('feed');
-let feedPolling=false;
+let ws=null;
 
 function renderFeedItem(d){
   const el=document.createElement('div');
   el.className=`feed-item ${d.blocked?'blocked':'passed'}`;
-  el.innerHTML=`<div class="fi-status ${d.blocked?'b':'p'}">${d.blocked?'BLK':'OK'}</div><div class="fi-id">${d.session_id}</div><div class="fi-type">${d.type}</div><div class="fi-module">${d.module}</div><div class="fi-score ${d.blocked?'b':'p'}">${d.score}</div>`;
-  el.style.opacity='0';el.style.transform='translateY(4px)';
+  el.innerHTML=`<div class="fi-status ${d.blocked?'b':'p'}">${d.blocked?'BLK':'OK'}</div><div class="fi-id">${d.session_id}</div><div class="fi-type">${d.type}</div><div class="fi-module">${d.module}</div><div class="fi-score ${d.blocked?'b':'p'}">${typeof d.score==='number'?d.score.toFixed(4):d.score}</div>`;
+  el.style.cssText='opacity:0;transform:translateY(4px)';
   feed.prepend(el);
-  requestAnimationFrame(()=>{el.style.transition='opacity .25s, transform .25s';el.style.opacity='1';el.style.transform='none'});
+  requestAnimationFrame(()=>{el.style.cssText='transition:opacity .25s,transform .25s;opacity:1;transform:none'});
   if(feed.children.length>7){
     const last=feed.lastChild;
     last.style.transition='opacity .2s';last.style.opacity='0';
@@ -1183,119 +942,186 @@ function renderFeedItem(d){
   }
 }
 
-async function seedFeed(){
-  if(feedPolling)return;
-  feedPolling=true;
-  // Clear any placeholder items
-  feed.innerHTML='';
-  for(let i=0;i<5;i++){
-    try{
-      const r=await fetch(`${API}/v1/demo/event`,{signal:AbortSignal.timeout(5000)});
-      renderFeedItem(await r.json());
-    }catch{}
-    await new Promise(res=>setTimeout(res,120));
+function startFeed(){
+  if(ws&&ws.readyState===WebSocket.OPEN)return;
+  try{
+    ws=new WebSocket(WS_URL);
+    ws.onmessage=e=>{try{renderFeedItem(JSON.parse(e.data))}catch{}};
+    ws.onclose=()=>{ws=null;if(backendReady)setTimeout(startFeed,4000)};
+    ws.onerror=()=>{ws=null};
+  }catch{
+    // WebSocket not available, fall back to polling
+    startFeedPolling();
   }
-  // Start polling
-  setInterval(async()=>{
-    if(!backendReady)return;
+}
+
+function startFeedPolling(){
+  let running=false;
+  async function poll(){
+    if(!backendReady||running)return;
+    running=true;
     try{
       const r=await fetch(`${API}/v1/demo/event`,{signal:AbortSignal.timeout(4000)});
       renderFeedItem(await r.json());
     }catch{}
-  },2200);
+    running=false;
+  }
+  setInterval(poll,2200);
+  for(let i=0;i<5;i++)setTimeout(poll,i*150);
 }
 
-// PIPELINE NODE ANIMATION
+// ── PIPELINE ANIMATION ────────────────────────────────────────────────────
 const nodes=document.querySelectorAll('.pm-node');
 const connectors=document.querySelectorAll('.pm-connector');
 let activeNode=3;
 function advancePipeline(){
-  nodes.forEach((n,i)=>{
-    n.classList.remove('active','done');
-    if(i<activeNode)n.classList.add('done');
-    else if(i===activeNode)n.classList.add('active');
-  });
-  connectors.forEach((c,i)=>{
-    c.classList.remove('done');
-    if(i<activeNode)c.classList.add('done');
-  });
+  nodes.forEach((n,i)=>{n.classList.remove('active','done');if(i<activeNode)n.classList.add('done');else if(i===activeNode)n.classList.add('active')});
+  connectors.forEach((c,i)=>{c.classList.remove('done');if(i<activeNode)c.classList.add('done')});
   activeNode=(activeNode+1)%7;
-  if(activeNode===0){
-    setTimeout(()=>{
-      nodes.forEach(n=>n.classList.remove('active','done'));
-      connectors.forEach(c=>c.classList.remove('done'));
-      activeNode=0;
-    },400);
-  }
+  if(activeNode===0)setTimeout(()=>{nodes.forEach(n=>n.classList.remove('active','done'));connectors.forEach(c=>c.classList.remove('done'));activeNode=0},400);
 }
 setInterval(advancePipeline,900);
 
-// FILE DROP
-const faceFile=document.getElementById('face-file');
-const faceDrop=document.getElementById('face-drop');
-const faceName=document.getElementById('face-name');
-faceDrop.addEventListener('click',()=>faceFile.click());
-faceFile.addEventListener('change',()=>{
-  if(faceFile.files[0])faceName.textContent=faceFile.files[0].name;
-});
-faceDrop.addEventListener('dragover',e=>{e.preventDefault();faceDrop.style.borderColor='var(--accent)'});
-faceDrop.addEventListener('dragleave',()=>faceDrop.style.borderColor='');
-faceDrop.addEventListener('drop',e=>{
-  e.preventDefault();faceDrop.style.borderColor='';
-  const f=e.dataTransfer.files[0];
-  if(f&&f.type.startsWith('image/')){
-    const dt=new DataTransfer();dt.items.add(f);
-    faceFile.files=dt.files;faceName.textContent=f.name;
-  }
-});
+// ── FILE DROP HANDLERS ────────────────────────────────────────────────────
+function setupDrop(dropId,inputId,nameId){
+  const drop=document.getElementById(dropId);
+  const input=document.getElementById(inputId);
+  const name=document.getElementById(nameId);
+  if(!drop||!input)return;
+  input.addEventListener('change',()=>{
+    if(input.files[0]){name.textContent=input.files[0].name;drop.classList.add('has-file')}
+  });
+  drop.addEventListener('dragover',e=>{e.preventDefault();drop.style.borderColor='var(--accent)'});
+  drop.addEventListener('dragleave',()=>drop.style.borderColor='');
+  drop.addEventListener('drop',e=>{
+    e.preventDefault();drop.style.borderColor='';
+    const f=e.dataTransfer.files[0];
+    if(f&&f.type.startsWith('image/')){
+      const dt=new DataTransfer();dt.items.add(f);
+      input.files=dt.files;name.textContent=f.name;drop.classList.add('has-file');
+    }
+  });
+}
+setupDrop('face-drop','face-file','face-name');
+setupDrop('doc-drop','doc-file','doc-name');
 
-function colorScore(s){
-  const v=parseFloat(s);
-  if(v>0.7)return`<span style="color:var(--green)">${s}</span>`;
-  if(v>0.5)return`<span style="color:var(--yellow)">${s}</span>`;
-  return`<span style="color:var(--red)">${s}</span>`;
+// ── CODE COPY ────────────────────────────────────────────────────────────
+function copyCode(){
+  const code=document.getElementById('code-sample');
+  if(code){navigator.clipboard.writeText(code.innerText).catch(()=>{});
+  const btn=document.getElementById('copy-btn');
+  if(btn){btn.textContent='Copied';setTimeout(()=>btn.textContent='Copy',1400)}}
+}
+
+// ── DEMO RUN ─────────────────────────────────────────────────────────────
+function colorScore(v){
+  const n=parseFloat(v);
+  if(n>0.7)return`<span style="color:var(--green)">${typeof v==='number'?v.toFixed(4):v}</span>`;
+  if(n>0.5)return`<span style="color:var(--yellow)">${typeof v==='number'?v.toFixed(4):v}</span>`;
+  return`<span style="color:var(--red)">${typeof v==='number'?v.toFixed(4):v}</span>`;
 }
 
 async function runDemo(){
-  const btn=document.getElementById('run-btn');
+  const faceInput=document.getElementById('face-file');
+  const docInput=document.getElementById('doc-file');
   const body=document.getElementById('demo-body');
   const status=document.getElementById('demo-status');
-  const f=faceFile.files[0];
-  if(!f){body.innerHTML='<span style="color:var(--red)">Select a face image first.</span>';return;}
-  btn.disabled=true;btn.textContent='Running...';btn.style.opacity='0.6';
+  const latEl=document.getElementById('demo-latency');
+  const f=faceInput.files[0];
+  if(!f){body.innerHTML='<span style="color:var(--red)">Select a face image first.</span>';return}
+  setDemoBtn(false,'Running...');
   status.textContent='RUNNING';status.style.color='var(--accent)';
+  if(latEl)latEl.textContent='';
   body.innerHTML='<span style="color:var(--text3)">Sending to pipeline...</span>';
+
   const fd=new FormData();
   fd.append('face_image',f);
+  if(docInput.files[0])fd.append('document',docInput.files[0]);
   fd.append('session_id','sess_'+Math.random().toString(36).slice(2,10));
+
   try{
     const r=await fetch(`${API}/v1/verify/full`,{method:'POST',body:fd});
     const d=await r.json();
     const decColor=d.decision==='PASS'?'var(--green)':d.decision==='REVIEW'?'var(--yellow)':'var(--red)';
-    const m=d.modules;
+    const m=d.modules||{};
+    if(latEl)latEl.textContent=`${d.latency_ms}ms`;
+    status.textContent='DONE';status.style.color=d.decision==='PASS'?'var(--green)':d.decision==='BLOCK'?'var(--red)':'var(--yellow)';
+
+    const imgFeats=d.image_analysis;
+    const featsHtml=imgFeats?`<div style="margin-top:12px;padding:10px 12px;border:1px solid var(--border);border-radius:6px;background:rgba(2,8,17,0.4)">
+      <div style="font-family:var(--mono);font-size:9.5px;color:var(--text3);letter-spacing:0.1em;margin-bottom:8px">IMAGE ANALYSIS</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-family:var(--mono);font-size:10.5px">
+        <div><div style="color:var(--text3)">BRIGHTNESS</div><div style="color:var(--text)">${imgFeats.brightness}</div></div>
+        <div><div style="color:var(--text3)">SHARPNESS</div><div style="color:var(--text)">${imgFeats.sharpness}</div></div>
+        <div><div style="color:var(--text3)">SKIN RATIO</div><div style="color:var(--text)">${imgFeats.skin_ratio}</div></div>
+      </div>
+    </div>`:'';
+
     body.innerHTML=`
-<div style="margin-bottom:14px;display:flex;align-items:center;gap:10px">
-  <span style="font-size:18px;font-weight:700;color:${decColor}">${d.decision}</span>
-  <span style="color:var(--text3);font-size:11px">fused ${colorScore(d.fused_score.toFixed(4))} — ${d.latency_ms}ms</span>
+<div style="margin-bottom:14px;display:flex;align-items:center;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+  <span style="font-size:20px;font-weight:800;color:${decColor};letter-spacing:-0.5px">${d.decision}</span>
+  <span style="color:var(--text3);font-size:11px">fused ${colorScore(d.fused_score)} &nbsp;·&nbsp; ${d.latency_ms}ms&nbsp; &nbsp;·&nbsp; doc: ${d.document_submitted?'<span style="color:var(--green)">yes</span>':'<span style="color:var(--text3)">none</span>'}</span>
 </div>
-<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px">
+<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">
 ${['liveness','deepfake','face_recognition','behavioral','fusion'].map(k=>{
   const mod=m[k];if(!mod)return'';
   const sc=mod.score!==undefined?mod.score:mod.fused_score;
   const label=k.replace('_',' ').toUpperCase();
-  const bar=typeof sc==='number'?`<div style="flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden"><div style="width:${(sc*100).toFixed(0)}%;height:100%;background:${sc>0.7?'var(--green)':sc>0.5?'var(--yellow)':'var(--red)'};border-radius:2px"></div></div>`:'';
-  return`<div style="display:flex;align-items:center;gap:10px">
-    <span style="width:110px;color:var(--text3);font-size:10.5px">${label}</span>
+  const bar=typeof sc==='number'?`<div style="flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden;min-width:40px"><div style="width:${(sc*100).toFixed(0)}%;height:100%;background:${sc>0.7?'var(--green)':sc>0.5?'var(--yellow)':'var(--red)'};border-radius:2px"></div></div>`:'';
+  const flags=mod.flags&&mod.flags.length?`<span style="color:var(--red);font-size:9px;margin-left:4px">${mod.flags[0]}</span>`:'';
+  return`<div style="display:flex;align-items:center;gap:8px">
+    <span style="width:116px;color:var(--text3);font-size:10.5px;flex-shrink:0">${label}</span>
     ${bar}
-    <span style="width:54px;text-align:right">${typeof sc==='number'?colorScore(sc.toFixed(4)):'-'}</span>
+    <span style="width:52px;text-align:right;flex-shrink:0">${typeof sc==='number'?colorScore(sc):'-'}</span>
+    ${flags}
   </div>`;}).join('')}
 </div>
-${d.risk_flags&&d.risk_flags.length?`<div style="font-size:10.5px;color:var(--red)">FLAGS: ${d.risk_flags.join(', ')}</div>`:'<div style="font-size:10.5px;color:var(--green)">No risk flags.</div>'}`;
+${d.risk_flags&&d.risk_flags.length?`<div style="font-size:10.5px;color:var(--red);font-family:var(--mono)">FLAGS: ${d.risk_flags.join(', ')}</div>`:'<div style="font-size:10.5px;color:var(--green);font-family:var(--mono)">No risk flags detected.</div>'}
+${featsHtml}`;
   }catch(e){
-    body.innerHTML=`<span style="color:var(--red)">Request failed — the backend may be cold-starting (Render free tier). Try again in 30s.</span><br><span style="color:var(--text3);font-size:10.5px">${e.message}</span>`;
+    status.textContent='ERROR';status.style.color='var(--red)';
+    body.innerHTML=`<span style="color:var(--red)">Request failed — backend may be cold-starting. Try again in 30s.</span><br><span style="color:var(--text3);font-size:10.5px">${e.message}</span>`;
   }
-  btn.disabled=false;btn.textContent='Run Verification';btn.style.opacity='1';
-  status.textContent='DONE';status.style.color='var(--green)';
+  setDemoBtn(true,'Run Verification');
+}
+
+// ── ACCESS REQUEST MODAL ──────────────────────────────────────────────────
+function openModal(){document.getElementById('modal').classList.add('open');document.body.style.overflow='hidden'}
+function closeModal(){document.getElementById('modal').classList.remove('open');document.body.style.overflow=''}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+
+async function submitAccessRequest(){
+  const name=document.getElementById('req-name').value.trim();
+  const email=document.getElementById('req-email').value.trim();
+  const org=document.getElementById('req-org').value.trim();
+  const usecase=document.getElementById('req-usecase').value.trim();
+  const errEl=document.getElementById('form-error');
+  const btn=document.getElementById('req-submit');
+
+  errEl.style.display='none';
+  if(!name||!email||!org||!usecase){errEl.textContent='All fields are required.';errEl.style.display='block';return}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){errEl.textContent='Enter a valid email address.';errEl.style.display='block';return}
+
+  btn.disabled=true;btn.textContent='Submitting...';
+
+  try{
+    const r=await fetch(`${API}/v1/access-request`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name,email,organization:org,use_case:usecase}),
+    });
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.detail||'Server error');
+    document.getElementById('form-fields').style.display='none';
+    const succ=document.getElementById('form-success');
+    succ.style.display='block';
+    const reqId=document.getElementById('req-id-display');
+    if(reqId)reqId.textContent=`Request ID: ${d.request_id}`;
+    setTimeout(()=>{closeModal();document.getElementById('form-fields').style.display='block';succ.style.display='none';btn.disabled=false;btn.textContent='Submit Request';['req-name','req-email','req-org','req-usecase'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''})},4000);
+  }catch(e){
+    errEl.textContent=`Submission failed: ${e.message}`;errEl.style.display='block';
+    btn.disabled=false;btn.textContent='Submit Request';
+  }
 }
 </script>
 </body>
