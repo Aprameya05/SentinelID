@@ -2,37 +2,38 @@ project:
   name: sentinelid-edge-distillation
   device: cuda
   mixed_precision: true
-  compile_model: true
+  compile_model: false          # keep off — causes issues with ONNX export unwrapping
 
 paths:
-  checkpoint_dir: checkpoints/
-  data_root: data/raw/
+  checkpoint_dir: /content/drive/MyDrive/sentinelid/checkpoints
 
 data:
   image_size: 224
   datasets:
+    - name: liveness_train
+      root: /content/data/liveness
     - name: nuaa
-      root: data/raw/nuaa
+      root: /content/data/nuaa
     - name: faceforensics
-      root: data/raw/faceforensics
+      root: /content/data/faceforensics
 
 face:
   num_classes: 85742
 
 student:
   face_embed_dim: 256
-  au_out: 12
+  au_out: 1
 
 training:
-  batch_size: 128
+  batch_size: 64
   epochs: 40
   lr: 5.0e-4
   weight_decay: 1.0e-4
   temperature: 4.0
-  alpha: 0.7          # weight for soft targets vs hard labels
-  embedding_weight: 1.0
+  alpha: 0.7
+  embedding_weight: 0.3
 
 compute:
-  num_workers: 8
+  num_workers: 2
   pin_memory: true
   persistent_workers: true
