@@ -70,8 +70,8 @@ class LivenessDataset(Dataset):
                 T.RandomHorizontalFlip(0.5),
                 T.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.3, hue=0.05),
                 T.RandomGrayscale(p=0.05),
-                T.RandomErasing(p=0.2),
                 T.ToTensor(),
+                T.RandomErasing(p=0.2),
                 T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             ])
         else:
@@ -199,10 +199,9 @@ def train(cfg):
         console.print("torch.compile enabled")
 
     criterion = LivenessLoss(
-        bce_weight=cfg.training.bce_weight,
-        depth_weight=cfg.training.depth_weight,
-        contrastive_weight=cfg.training.contrastive_weight,
-        margin=cfg.training.contrastive_margin,
+        liveness_weight=getattr(cfg.training, 'bce_weight', 1.0),
+        depth_weight=getattr(cfg.training, 'depth_weight', 0.5),
+        contrastive_weight=getattr(cfg.training, 'contrastive_weight', 0.1),
     )
 
     optimizer = torch.optim.AdamW(

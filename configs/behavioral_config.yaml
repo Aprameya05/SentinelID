@@ -1,36 +1,27 @@
-project:
-  name: sentinelid-behavioral
-  device: cuda
-  mixed_precision: true
-  compile_model: false
-
-paths:
-  checkpoint_dir: checkpoints/
-  data_root: data/raw/
-
-data:
-  image_size: 256
-  datasets:
-    - name: disfa
-      root: data/raw/disfa
-    - name: bp4d
-      root: data/raw/bp4d
-
-model:
-  n_aus: 12
-  node_feat_dim: 2
-  hidden_dim: 256
-  n_layers: 4
-
-training:
-  batch_size: 128
-  epochs: 50
-  lr: 3.0e-4
-  weight_decay: 1.0e-4
-  gaze_weight: 0.5
-  eval_every_n_epochs: 5
-
 compute:
-  num_workers: 8
+  num_workers: 2
+  persistent_workers: false
   pin_memory: true
-  persistent_workers: true
+data:
+  datasets:
+  - name: behavioral_train
+    root: /content/data/behavioral
+model:
+  hidden_dim: 256
+  n_aus: 12
+  n_heads: 4
+  n_layers: 3
+paths:
+  checkpoint_dir: /content/drive/MyDrive/sentinelid/checkpoints
+project:
+  compile_model: false
+  device: cuda
+  mixed_precision: false
+  name: sentinelid-behavioral
+training:
+  au_weight: 1.0
+  batch_size: 256
+  epochs: 20
+  gaze_weight: 0.5
+  lr: 0.001
+  weight_decay: 0.0001

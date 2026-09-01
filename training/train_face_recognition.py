@@ -54,8 +54,8 @@ def build_transform(image_size: int = 112):
         T.Resize((image_size, image_size)),
         T.RandomHorizontalFlip(0.5),
         T.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3),
-        T.RandomErasing(p=0.3),
         T.ToTensor(),
+        T.RandomErasing(p=0.3),
         T.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
     ])
 
@@ -174,7 +174,7 @@ def train(cfg):
         num_workers=cfg.compute.num_workers,
         pin_memory=cfg.compute.pin_memory,
         persistent_workers=cfg.compute.persistent_workers,
-        prefetch_factor=cfg.compute.prefetch_factor,
+        prefetch_factor=getattr(cfg.compute, "prefetch_factor", 2),
         drop_last=True,
     )
 
@@ -193,7 +193,7 @@ def train(cfg):
     optimizer = torch.optim.SGD(
         model.parameters(),
         lr=cfg.training.lr,
-        momentum=cfg.training.momentum,
+        momentum=getattr(cfg.training, "momentum", 0.9),
         weight_decay=cfg.training.weight_decay,
     )
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
@@ -254,7 +254,7 @@ def train(cfg):
 
         # Periodic LFW evaluation
         if (epoch + 1) % cfg.training.get("eval_every_n_epochs", 5) == 0:
-            lfw_root = Path(cfg.paths.data_root) / "lfw"
+            lfw_root = Path(getattr(cfg.paths, "data_root", "/content/data")) / "lfw"
             if lfw_root.exists():
                 metrics = eval_lfw(model, str(lfw_root), device)
                 console.print(f"  LFW AUC: {metrics['lfw_auc']:.4f} | TAR@FAR1e-3: {metrics['lfw_tar_far1e3']:.4f}")

@@ -159,10 +159,9 @@ def train(cfg):
 
     model = ActionUnitGNN(
         n_landmarks=68,
-        node_feat_dim=cfg.model.node_feat_dim,
-        hidden_dim=cfg.model.hidden_dim,
-        n_layers=cfg.model.n_layers,
         n_aus=cfg.model.n_aus,
+        hidden_dim=getattr(cfg.model, "hidden_dim", 128),
+        num_layers=getattr(cfg.model, "n_layers", 4),
     ).to(device)
 
     gaze_head = GazeRegressionHead(in_channels=3, hidden_dim=128).to(device)

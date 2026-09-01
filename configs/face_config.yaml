@@ -2,27 +2,28 @@ compute:
   num_workers: 4
   persistent_workers: true
   pin_memory: true
+  prefetch_factor: 2
 data:
   datasets:
-  - name: liveness_train
-    root: /content/data/liveness
-  image_size: 224
+  - name: faces
+    root: /content/data/faces
+  image_size: 112
 model:
-  backbone: resnet50
+  backbone: iresnet50
+  embedding_dim: 512
+  num_classes: 200
+  pretrained: false
 paths:
   checkpoint_dir: /content/drive/MyDrive/sentinelid/checkpoints
 project:
   compile_model: false
   device: cuda
   mixed_precision: true
-  name: sentinelid-liveness
+  name: sentinelid-face
 training:
-  batch_size: 32
-  bce_weight: 1.0
-  contrastive_margin: 1.0
-  contrastive_weight: 0.1
-  depth_weight: 0.5
+  batch_size: 64
   epochs: 30
   eval_every_n_epochs: 5
+  label_smoothing: 0.1
   lr: 0.001
-  weight_decay: 0.0001
+  weight_decay: 0.0005

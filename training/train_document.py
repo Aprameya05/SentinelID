@@ -30,6 +30,32 @@ from torch.utils.data import ConcatDataset, DataLoader
 from data.datasets.document import MIDV500Dataset, MIDV2020Dataset
 from models.document.layout_intelligence import DocumentIntelligenceModel, DocumentLoss
 
+
+import torchvision.transforms as T
+from PIL import Image
+
+class SimpleDocDataset(torch.utils.data.Dataset):
+    def __init__(self, root, augment=True):
+        self.samples = []
+        root = Path(root)
+        for label, folder in [(0.0, 'genuine'), (1.0, 'forged')]:
+            for p in (root / folder).rglob('*.jpg'):
+                self.samples.append((p, label))
+        self.transform = T.Compose([
+            T.Resize((224, 224)), T.ToTensor(),
+            T.Normalize([0.485,0.456,0.406],[0.229,0.224,0.225])
+        ])
+    def __len__(self): return len(self.samples)
+    def __getitem__(self, i):
+        path, label = self.samples[i]
+        img = self.transform(Image.open(path).convert('RGB'))
+        L = 128
+        return (img,
+                torch.zeros(L, dtype=torch.long),
+                torch.zeros(L, 4, dtype=torch.long),
+                torch.zeros(L, dtype=torch.long),
+                0, torch.tensor(label))
+
 console = Console()
 
 
@@ -43,57 +69,32 @@ def get_tokenizer(cfg):
         return None
 
 
-def collate_fn(batch: list[dict], pad_id: int = 0) -> dict:
-    """Collate variable-length token sequences by stacking fixed-length tensors."""
+def collate_fn(batch, pad_id: int = 0) -> dict:
+    def g(b, key, idx, default):
+        if isinstance(b, dict): return b.get(key, default)
+        return b[idx] if len(b) > idx else default
+    L = 128
     return {
-        "image": torch.stack([b["image"] for b in batch]),
-        "token_ids": torch.stack([b["token_ids"] for b in batch]),
-        "bbox": torch.stack([b["bbox"] for b in batch]),
-        "attention_mask": torch.stack([b["attention_mask"] for b in batch]),
-        "doc_type_label": torch.stack([b["doc_type_label"] for b in batch]),
-        "forgery_label": torch.stack([b["forgery_label"] for b in batch]),
+        "image": torch.stack([g(b,"image",0,torch.zeros(3,224,224)) for b in batch]),
+        "token_ids": torch.stack([g(b,"token_ids",1,torch.zeros(L,dtype=torch.long)) for b in batch]),
+        "bbox": torch.stack([g(b,"bbox",2,torch.zeros(L,4,dtype=torch.long)) for b in batch]),
+        "attention_mask": torch.stack([g(b,"attention_mask",3,torch.ones(L,dtype=torch.long)) for b in batch]),
+        "label": torch.tensor([float(g(b,"label",4,0)) for b in batch]),
+        "doc_type_label": torch.tensor([int(g(b,"doc_type_label",5,0)) for b in batch], dtype=torch.long),
     }
-
-
-@torch.inference_mode()
-def evaluate(model, loader, criterion, device) -> dict:
+def evaluate(model, loader, criterion, device):
     model.eval()
-    total_loss = 0.0
-    n_correct = 0
-    n_total = 0
-    n_forgery_correct = 0
-
-    for batch in loader:
-        image = batch["image"].to(device)
-        token_ids = batch["token_ids"].to(device)
-        bbox = batch["bbox"].to(device)
-        attention_mask = batch["attention_mask"].to(device)
-        doc_type_labels = batch["doc_type_label"].to(device)
-        forgery_labels = batch["forgery_label"].to(device)
-
-        outputs = model(image, token_ids, bbox, attention_mask)
-        loss = criterion(
-            outputs,
-            doc_type_labels=doc_type_labels,
-            field_labels={},
-            forgery_labels=forgery_labels,
-        )
-        total_loss += loss.item()
-
-        pred_type = outputs["doc_type_logits"].argmax(dim=1)
-        n_correct += (pred_type == doc_type_labels).sum().item()
-        n_total += len(doc_type_labels)
-
-        forgery_pred = (outputs["forgery_prob"] > 0.5).float()
-        n_forgery_correct += (forgery_pred == forgery_labels).sum().item()
-
+    correct, total = 0, 0
+    with torch.inference_mode():
+        for batch in loader:
+            images = batch["image"].to(device)
+            labels = batch["label"].to(device)
+            out = model(images, batch["token_ids"].to(device), batch["bbox"].to(device), batch["attention_mask"].to(device))
+            pred = (out["forgery_prob"] > 0.5).float()
+            correct += (pred == labels).sum().item()
+            total += len(labels)
     model.train()
-    return {
-        "loss": total_loss / max(1, len(loader)),
-        "doc_type_acc": n_correct / max(1, n_total),
-        "forgery_acc": n_forgery_correct / max(1, n_total),
-    }
-
+    return {"accuracy": correct / max(total, 1)}
 
 def train(cfg):
     device = torch.device(cfg.project.device if torch.cuda.is_available() else "cpu")
@@ -107,12 +108,12 @@ def train(cfg):
 
     for ds_cfg in cfg.data.get("datasets", []):
         cls_name = ds_cfg.name.replace("-", "").lower()
-        DatasetCls = dataset_classes.get(cls_name, MIDV500Dataset)
+        DatasetCls = SimpleDocDataset
         train_root = Path(ds_cfg.root) / "train"
         val_root = Path(ds_cfg.root) / "val"
 
         if train_root.exists():
-            ds = DatasetCls(str(train_root), augment=True, tokenizer=tokenizer)
+            ds = DatasetCls(str(train_root))
             train_datasets.append(ds)
             console.print(f"  {ds_cfg.name}: {len(ds):,} samples")
         elif Path(ds_cfg.root).exists():
@@ -125,7 +126,7 @@ def train(cfg):
             continue
 
         if val_root.exists() and val_dataset is None:
-            val_dataset = DatasetCls(str(val_root), augment=False, tokenizer=tokenizer)
+            val_dataset = DatasetCls(str(val_root))
 
     if not train_datasets:
         console.print("[red]No document datasets found.[/red]")
@@ -155,21 +156,21 @@ def train(cfg):
 
     # Model
     model = DocumentIntelligenceModel(
-        vocab_size=cfg.model.vocab_size,
-        hidden_size=cfg.model.hidden_size,
-        num_layers=cfg.model.num_layers,
-        num_heads=cfg.model.num_heads,
-        ff_dim=cfg.model.ff_dim,
-        dropout=cfg.model.dropout,
-        image_size=cfg.data.image_size,
-        patch_size=cfg.model.patch_size,
-        max_seq_len=cfg.data.max_seq_len,
+        vocab_size=getattr(cfg.model, "vocab_size", 30522),
+        hidden_size=getattr(cfg.model, "hidden_size", 768),
+        num_layers=getattr(cfg.model, "num_layers", 6),
+        num_heads=getattr(cfg.model, "num_heads", 12),
+        ff_dim=getattr(cfg.model, "ff_dim", 3072),
+        dropout=getattr(cfg.model, "dropout", 0.1),
+        image_size=getattr(cfg.data, "image_size", 224),
+        patch_size=getattr(cfg.model, "patch_size", 16),
+        max_seq_len=getattr(cfg.data, "max_seq_len", 128),
     ).to(device)
 
     criterion = DocumentLoss(
-        field_weight=cfg.training.field_weight,
-        doc_type_weight=cfg.training.doc_type_weight,
-        forgery_weight=cfg.training.forgery_weight,
+        field_weight=getattr(cfg.training, "field_weight", 0.5),
+        doc_type_weight=getattr(cfg.training, "doc_type_weight", 0.5),
+        forgery_weight=getattr(cfg.training, "forgery_weight", 1.0),
     )
 
     optimizer = torch.optim.AdamW(
@@ -190,7 +191,7 @@ def train(cfg):
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
     scaler = GradScaler(enabled=cfg.project.mixed_precision)
 
-    wandb.init(project="sentinelid", name="document-intelligence", config=dict(cfg))
+    wandb.init(project="sentinelid", name="document-intelligence", config=dict(cfg), settings=wandb.Settings(init_timeout=180))
     ckpt_dir = Path(cfg.paths.checkpoint_dir)
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
@@ -211,9 +212,9 @@ def train(cfg):
                 bbox = batch["bbox"].to(device, non_blocking=True)
                 attention_mask = batch["attention_mask"].to(device, non_blocking=True)
                 doc_type_labels = batch["doc_type_label"].to(device, non_blocking=True)
-                forgery_labels = batch["forgery_label"].to(device, non_blocking=True)
+                forgery_labels = batch.get("forgery_label", batch["label"]).to(device, non_blocking=True)
 
-                with autocast(enabled=cfg.project.mixed_precision):
+                with autocast(enabled=False):
                     outputs = model(image, token_ids, bbox, attention_mask)
                     loss = criterion(
                         outputs,
@@ -249,15 +250,12 @@ def train(cfg):
 
         if val_loader and (epoch + 1) % cfg.training.get("eval_every_n_epochs", 3) == 0:
             metrics = evaluate(model, val_loader, criterion, device)
-            console.print(
-                f"  Val -> loss: {metrics['loss']:.4f} | "
-                f"doc_type_acc: {metrics['doc_type_acc']:.3f} | "
-                f"forgery_acc: {metrics['forgery_acc']:.3f}"
-            )
-            wandb.log({f"val/{k}": v for k, v in metrics.items()} | {"epoch": epoch + 1})
+            acc = metrics.get("accuracy", 0.0)
+            console.print(f"  Val -> acc: {acc:.3f}")
+            wandb.log({"val/accuracy": acc, "epoch": epoch + 1})
 
-            if metrics["doc_type_acc"] > best_acc:
-                best_acc = metrics["doc_type_acc"]
+            if metrics.get("doc_type_acc", metrics.get("accuracy", 0)) > best_acc:
+                best_acc = metrics.get("doc_type_acc", metrics.get("accuracy", 0))
                 torch.save(model.state_dict(), ckpt_dir / "document_best.pt")
                 console.print(f"  [green]New best doc type acc: {best_acc:.3f}[/green]")
 

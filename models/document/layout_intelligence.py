@@ -398,7 +398,7 @@ class DocumentLoss(nn.Module):
         self.gamma = focal_gamma
 
     def focal_bce(self, pred: Tensor, target: Tensor) -> Tensor:
-        bce = F.binary_cross_entropy(pred, target, reduction="none")
+        bce = F.binary_cross_entropy(pred.float(), target.float(), reduction="none")
         p_t = pred * target + (1 - pred) * (1 - target)
         return ((1 - p_t) ** self.gamma * bce).mean()
 

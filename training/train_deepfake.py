@@ -236,7 +236,7 @@ def train(cfg):
         model = torch.compile(model)
         console.print("torch.compile enabled")
 
-    criterion = DeepfakeLoss(gamma=cfg.training.focal_gamma, alpha=cfg.training.focal_alpha)
+    criterion = DeepfakeLoss(gamma=getattr(cfg.training, "focal_gamma", 2.0), alpha=getattr(cfg.training, "focal_alpha", 0.25))
 
     optimizer = torch.optim.AdamW(
         model.parameters(),
