@@ -1,6 +1,6 @@
 # SentinelID
 
-A seven-module biometric verification pipeline built for my internship project. It covers the full attack surface: liveness detection, deepfake classification, face recognition, behavioral anomaly detection, document verification, score fusion, and an edge-distilled variant for ARM deployment.
+A seven-module biometric verification pipeline covering the full attack surface: liveness detection, deepfake classification, face recognition, behavioral anomaly detection, document verification, score fusion, and an edge-distilled variant for ARM deployment.
 
 The backend is a FastAPI service running on Render. The frontend is a static site on Cloudflare Pages. Everything is wired together and live.
 
