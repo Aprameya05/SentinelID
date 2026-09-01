@@ -916,7 +916,7 @@ footer{
 <pre><span class="k">import</span> requests
 
 resp = requests.<span class="n">post</span>(
-    <span class="s">"https://sentinelid-api.onrender.com/v1/verify/full"</span>,
+    <span class="s">"https://sentinelid.onrender.com/v1/verify/full"</span>,
     files={
         <span class="s">"face_image"</span>: <span class="n">open</span>(<span class="s">"face.jpg"</span>, <span class="s">"rb"</span>),
         <span class="s">"document"</span>: <span class="n">open</span>(<span class="s">"passport.jpg"</span>, <span class="s">"rb"</span>),
@@ -1154,7 +1154,7 @@ faceDrop.addEventListener('drop',e=>{
   }
 });
 
-const API='https://sentinelid-api.onrender.com';
+const API='https://sentinelid.onrender.com';
 
 function colorScore(s){
   const v=parseFloat(s);
