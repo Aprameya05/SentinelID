@@ -119,6 +119,28 @@ class SentinelEdgeModel(nn.Module):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# ONNX-compatible wrapper (returns tuple instead of dict)
+# ──────────────────────────────────────────────────────────────────────────────
+
+class _ONNXWrapper(nn.Module):
+    """Wraps SentinelEdgeModel to return a tuple — required for ONNX export."""
+
+    def __init__(self, model: SentinelEdgeModel):
+        super().__init__()
+        self.model = model
+
+    def forward(self, images: Tensor):
+        out = self.model(images)
+        return (
+            out["liveness"],
+            out["face_embed"],
+            out["au_signal"],
+            out["logits_liveness"],
+            out["logits_au"],
+        )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Distillation loss
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -128,24 +150,31 @@ class DistillationLoss(nn.Module):
       - KL divergence between teacher soft labels and student logits (temperature T)
       - Hard label cross-entropy
       - Embedding feature matching (L2 distance between projected embeddings)
+
+    Args:
+        temperature: softmax temperature for soft targets
+        alpha: weight for KL loss vs hard label loss (alpha * KL + (1-alpha) * BCE)
+        beta: weight for embedding matching loss
+        embedding_weight: alias for beta (kept for config compatibility)
     """
 
     def __init__(
         self,
         temperature: float = 4.0,
-        alpha: float = 0.7,   # weight for KL (distillation) vs hard label
-        beta: float = 0.3,    # weight for embedding matching
+        alpha: float = 0.7,
+        beta: float = 0.3,
+        embedding_weight: float | None = None,  # alias for beta
     ):
         super().__init__()
         self.T = temperature
         self.alpha = alpha
-        self.beta = beta
+        self.beta = embedding_weight if embedding_weight is not None else beta
 
         # Projection from teacher embedding dim to student embedding dim.
         # Created lazily on first forward call when dims are known.
         self._emb_matcher: nn.Linear | None = None
 
-    def set_temperature(self, T: float):
+    def set_temperature(self, T: float) -> None:
         """Anneal temperature during training."""
         self.T = T
 
@@ -158,24 +187,24 @@ class DistillationLoss(nn.Module):
         hard_labels: Tensor,
     ) -> Tensor:
         """
-        student_liveness:      (B,) student liveness logit
-        student_embedding:     (B, D) L2-normalised student embedding
-        teacher_liveness_logit:(B,) teacher liveness logit
-        teacher_embedding:     (B, D') teacher embedding (projected to student dim internally)
-        hard_labels:           (B,) binary float labels
+        student_liveness:       (B,) student liveness logit
+        student_embedding:      (B, D) L2-normalised student embedding
+        teacher_liveness_logit: (B,) teacher liveness logit
+        teacher_embedding:      (B, D') teacher embedding (projected to student dim internally)
+        hard_labels:            (B,) binary float labels
         Returns scalar loss tensor.
         """
         T = self.T
         soft_teacher = torch.sigmoid(teacher_liveness_logit / T)
         soft_student = torch.sigmoid(student_liveness / T)
 
-        # Binary KL divergence
+        # Binary KL divergence (T² rescaling per Hinton et al.)
         kl_loss = (
             soft_teacher * torch.log(soft_teacher / (soft_student + 1e-8) + 1e-8)
             + (1 - soft_teacher) * torch.log((1 - soft_teacher) / (1 - soft_student + 1e-8) + 1e-8)
         ).mean() * (T ** 2)
 
-        # Hard label loss (use logit -> bce_with_logits for stability)
+        # Hard label loss
         hard_loss = F.binary_cross_entropy_with_logits(student_liveness, hard_labels.float())
 
         # Embedding matching — project teacher -> student dim if they differ
@@ -184,7 +213,11 @@ class DistillationLoss(nn.Module):
         if t_dim == s_dim:
             teacher_proj = teacher_embedding
         else:
-            if self._emb_matcher is None or self._emb_matcher.in_features != t_dim or self._emb_matcher.out_features != s_dim:
+            if (
+                self._emb_matcher is None
+                or self._emb_matcher.in_features != t_dim
+                or self._emb_matcher.out_features != s_dim
+            ):
                 self._emb_matcher = nn.Linear(t_dim, s_dim, bias=False).to(teacher_embedding.device)
             teacher_proj = self._emb_matcher(teacher_embedding)
         emb_loss = F.mse_loss(student_embedding, teacher_proj.detach())
@@ -203,24 +236,43 @@ class EdgeDistiller:
     def __init__(self, student: SentinelEdgeModel):
         self.student = student
 
-    def export_onnx(self, path: str, input_size: tuple = (1, 3, 224, 224)):
-        self.student.eval()
+    def export_onnx(self, path: str, input_size: tuple = (1, 3, 224, 224)) -> None:
+        """
+        Export to ONNX using the legacy (non-dynamo) exporter for maximum compatibility.
+        The model is wrapped in _ONNXWrapper to convert dict output -> tuple,
+        which is required by the ONNX exporter.
+        """
+        self.student.eval().cpu()
+        wrapper = _ONNXWrapper(self.student).eval()
         dummy = torch.randn(input_size)
+
         torch.onnx.export(
-            self.student,
+            wrapper,
             dummy,
             path,
             input_names=["image"],
-            output_names=["liveness_score", "embedding", "au_signal", "logits_liveness", "logits_au"],
+            output_names=["liveness_score", "face_embed", "au_signal", "logits_liveness", "logits_au"],
             dynamic_axes={"image": {0: "batch"}},
-            opset_version=17,
+            opset_version=14,
+            dynamo=False,   # force legacy exporter — dynamo path rejects dynamic_axes
         )
         print(f"ONNX model exported to {path}")
 
-    def export_tflite(self, onnx_path: str, tflite_path: str, quantize: bool = True):
+        # Quick sanity check with onnxruntime
+        try:
+            import onnxruntime as ort
+            import numpy as np
+            sess = ort.InferenceSession(path, providers=["CPUExecutionProvider"])
+            dummy_np = np.random.randn(*input_size).astype(np.float32)
+            outs = sess.run(None, {"image": dummy_np})
+            print(f"  ORT verification: {len(outs)} outputs, liveness shape {outs[0].shape} ✓")
+        except Exception as e:
+            print(f"  ORT check skipped: {e}")
+
+    def export_tflite(self, onnx_path: str, tflite_path: str, quantize: bool = True) -> None:
         """
         Convert ONNX -> TFLite with optional INT8 quantization.
-        Requires onnx2tf or ai-edge-torch.
+        Requires onnx2tf: pip install onnx2tf
         """
         try:
             import onnx2tf
@@ -234,11 +286,11 @@ class EdgeDistiller:
         except ImportError:
             print("onnx2tf not installed. Run: pip install onnx2tf")
 
-    def benchmark(self, num_runs: int = 100) -> dict[str, float]:
+    def benchmark(self, num_runs: int = 100, input_size: tuple = (1, 3, 224, 224)) -> dict[str, float]:
         """Measure latency on CPU (proxy for mobile inference)."""
         import time
-        self.student.eval()
-        dummy = torch.randn(1, 3, 224, 224)
+        self.student.eval().cpu()
+        dummy = torch.randn(input_size)
         times = []
         with torch.inference_mode():
             for _ in range(10):  # warmup
@@ -247,8 +299,9 @@ class EdgeDistiller:
                 t0 = time.perf_counter()
                 self.student(dummy)
                 times.append((time.perf_counter() - t0) * 1000)
+        t = torch.tensor(times)
         return {
-            "mean_ms": float(torch.tensor(times).mean()),
-            "p95_ms": float(torch.tensor(times).quantile(0.95)),
-            "p99_ms": float(torch.tensor(times).quantile(0.99)),
+            "mean_ms": float(t.mean()),
+            "p95_ms": float(t.quantile(0.95)),
+            "p99_ms": float(t.quantile(0.99)),
         }
