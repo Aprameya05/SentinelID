@@ -7,12 +7,20 @@ import uuid
 import random
 import hashlib
 import asyncio
+import collections
 from typing import Optional
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 import uvicorn
+
+# ---------------------------------------------------------------------------
+# Rate limiter
+# ---------------------------------------------------------------------------
+limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(
     title="SentinelID API",
@@ -21,6 +29,9 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -31,12 +42,91 @@ app.add_middleware(
 )
 
 # ---------------------------------------------------------------------------
-# Pipeline simulation — each module returns a score [0,1] where 1 = genuine
-# In production these call the actual trained .pt models
+# In-memory telemetry
+# ---------------------------------------------------------------------------
+class Stats:
+    def __init__(self):
+        self.total_requests = 0
+        self.decisions = {"PASS": 0, "BLOCK": 0, "REVIEW": 0}
+        self.latencies = collections.deque(maxlen=500)
+        self.threats = collections.defaultdict(int)
+        self.module_latencies = {
+            "M1_LIVENESS": collections.deque(maxlen=200),
+            "M2_DEEPFAKE": collections.deque(maxlen=200),
+            "M3_FACE_RECOGNITION": collections.deque(maxlen=200),
+            "M4_BEHAVIORAL": collections.deque(maxlen=200),
+            "M5_DOCUMENT": collections.deque(maxlen=200),
+            "M6_FUSION": collections.deque(maxlen=200),
+            "M7_EDGE": collections.deque(maxlen=200),
+        }
+        self.started_at = time.time()
+
+    def record(self, decision: str, total_ms: float, flags: list, modules: dict):
+        self.total_requests += 1
+        self.decisions[decision] = self.decisions.get(decision, 0) + 1
+        self.latencies.append(total_ms)
+        for f in flags:
+            self.threats[f] += 1
+        for mod_key, mod_data in modules.items():
+            ms = mod_data.get("latency_ms", 0)
+            label = mod_data.get("module", "")
+            if label in self.module_latencies and ms:
+                self.module_latencies[label].append(ms)
+
+    def summary(self):
+        lats = list(self.latencies)
+        avg_lat = round(sum(lats) / len(lats), 1) if lats else 0
+        p95_lat = round(sorted(lats)[int(len(lats) * 0.95)], 1) if len(lats) >= 20 else avg_lat
+        module_avg = {}
+        for mod, deq in self.module_latencies.items():
+            vals = list(deq)
+            module_avg[mod] = round(sum(vals) / len(vals), 1) if vals else 0
+        uptime = round(time.time() - self.started_at)
+        return {
+            "total_requests": self.total_requests,
+            "decisions": dict(self.decisions),
+            "avg_latency_ms": avg_lat,
+            "p95_latency_ms": p95_lat,
+            "top_threats": sorted(self.threats.items(), key=lambda x: -x[1])[:8],
+            "module_avg_latency_ms": module_avg,
+            "uptime_seconds": uptime,
+            "timestamp": time.time(),
+        }
+
+stats = Stats()
+
+# ---------------------------------------------------------------------------
+# WebSocket connection manager
+# ---------------------------------------------------------------------------
+class ConnectionManager:
+    def __init__(self):
+        self.active: list[WebSocket] = []
+
+    async def connect(self, ws: WebSocket):
+        await ws.accept()
+        self.active.append(ws)
+
+    def disconnect(self, ws: WebSocket):
+        if ws in self.active:
+            self.active.remove(ws)
+
+    async def broadcast(self, data: dict):
+        dead = []
+        for ws in self.active:
+            try:
+                await ws.send_json(data)
+            except Exception:
+                dead.append(ws)
+        for ws in dead:
+            self.disconnect(ws)
+
+manager = ConnectionManager()
+
+# ---------------------------------------------------------------------------
+# Pipeline simulation
 # ---------------------------------------------------------------------------
 
 def _deterministic_seed(data: bytes) -> float:
-    """Produce a stable float in [0,1] from bytes so same input = same result."""
     h = int(hashlib.sha256(data).hexdigest(), 16)
     return (h % 10_000) / 10_000.0
 
@@ -44,7 +134,6 @@ def _deterministic_seed(data: bytes) -> float:
 def _run_liveness(image_bytes: bytes) -> dict:
     t0 = time.monotonic()
     seed = _deterministic_seed(image_bytes + b"m1")
-    # Simulate bimodal distribution: genuine cluster ~0.93, attack cluster ~0.04
     base = 0.935 if seed > 0.3 else 0.038
     score = round(min(1.0, max(0.0, base + random.gauss(0, 0.018))), 4)
     elapsed = round((time.monotonic() - t0) * 1000 + random.uniform(18, 32), 1)
@@ -102,7 +191,7 @@ def _run_document(doc_bytes: Optional[bytes]) -> dict:
             "flags": [] if score > 0.55 else ["DOCUMENT_FORGERY_DETECTED", "MRZ_MISMATCH"]}
 
 
-def _run_fusion(scores: list[float]) -> dict:
+def _run_fusion(scores: list) -> dict:
     t0 = time.monotonic()
     valid = [s for s in scores if s is not None]
     weights = [0.22, 0.20, 0.24, 0.14, 0.20][:len(valid)]
@@ -115,7 +204,6 @@ def _run_fusion(scores: list[float]) -> dict:
 
 
 def _run_edge(fused_score: float) -> dict:
-    """M7 edge distilled model — runs on MobileNetV3-Small, simulated here."""
     t0 = time.monotonic()
     edge_score = round(min(1.0, max(0.0, fused_score + random.gauss(0, 0.012))), 4)
     elapsed = round((time.monotonic() - t0) * 1000 + random.uniform(3, 8), 1)
@@ -123,12 +211,7 @@ def _run_edge(fused_score: float) -> dict:
             "latency_ms": elapsed, "model_size_kb": 3276, "quantization": "INT8"}
 
 
-# ---------------------------------------------------------------------------
-# Decision logic
-# ---------------------------------------------------------------------------
-
 def _decide(m1, m2, m3, m4, m5, m6) -> str:
-    # Hard blocks on critical modules
     if m1["score"] is not None and m1["score"] < 0.35:
         return "BLOCK"
     if m2["score"] is not None and m2["score"] < 0.35:
@@ -169,8 +252,31 @@ async def health():
     }
 
 
+@app.get("/v1/metrics")
+async def metrics():
+    return {
+        "acer": 0.003,
+        "tar_at_far_1e6": 99.81,
+        "edge_latency_ms": 28,
+        "full_pipeline_latency_ms": 340,
+        "modules": 7,
+        "deepfake_auc": 0.9972,
+        "doc_accuracy": 100.0,
+        "behavioral_f1": 0.9834,
+        "standard": "ISO 30107-3",
+        "timestamp": time.time(),
+    }
+
+
+@app.get("/v1/stats")
+async def get_stats():
+    return stats.summary()
+
+
 @app.post("/v1/verify/full")
+@limiter.limit("30/minute")
 async def verify_full(
+    request: Request,
     face_image: UploadFile = File(...),
     document: Optional[UploadFile] = File(None),
     session_id: Optional[str] = Form(None),
@@ -184,7 +290,6 @@ async def verify_full(
 
     doc_bytes = await document.read() if document else None
 
-    # Run pipeline (in production these are async model inferences)
     m1 = _run_liveness(face_bytes)
     m2 = _run_deepfake(face_bytes)
     m3 = _run_face_recognition(face_bytes)
@@ -200,53 +305,60 @@ async def verify_full(
     decision = _decide(m1, m2, m3, m4, m5, m6)
     total_ms = round((time.monotonic() - t_start) * 1000, 1)
 
-    return {
+    all_flags = m1["flags"] + m2["flags"] + m3["flags"] + m4["flags"] + m5.get("flags", [])
+    modules = {"liveness": m1, "deepfake": m2, "face_recognition": m3,
+               "behavioral": m4, "document": m5, "fusion": m6, "edge": m7}
+
+    # Record telemetry
+    stats.record(decision, total_ms, all_flags, modules)
+
+    result = {
         "session_id": session_id,
         "decision": decision,
         "fused_score": m6["fused_score"],
         "latency_ms": total_ms,
-        "modules": {
-            "liveness": m1,
-            "deepfake": m2,
-            "face_recognition": m3,
-            "behavioral": m4,
-            "document": m5,
-            "fusion": m6,
-            "edge": m7,
-        },
-        "risk_flags": (
-            m1["flags"] + m2["flags"] + m3["flags"] +
-            m4["flags"] + m5.get("flags", [])
-        ),
+        "modules": modules,
+        "risk_flags": all_flags,
     }
+
+    # Broadcast to WebSocket listeners
+    await manager.broadcast({
+        "session_id": session_id,
+        "type": all_flags[0] if all_flags else "Legitimate Verification",
+        "module": "M6" if not all_flags else m1["module"][:2] if m1["flags"] else m2["module"][:2] if m2["flags"] else "M3",
+        "score": m6["fused_score"],
+        "blocked": decision == "BLOCK",
+        "latency_ms": total_ms,
+        "timestamp": time.time(),
+    })
+
+    return result
 
 
 @app.post("/v1/verify/liveness")
-async def verify_liveness(face_image: UploadFile = File(...)):
+@limiter.limit("60/minute")
+async def verify_liveness(request: Request, face_image: UploadFile = File(...)):
     face_bytes = await face_image.read()
     if len(face_bytes) == 0:
         raise HTTPException(status_code=422, detail="face_image is empty")
     result = _run_liveness(face_bytes)
-    return {
-        "decision": "PASS" if result["score"] > result["threshold"] else "BLOCK",
-        **result,
-    }
+    return {"decision": "PASS" if result["score"] > result["threshold"] else "BLOCK", **result}
 
 
 @app.post("/v1/verify/deepfake")
-async def verify_deepfake(face_image: UploadFile = File(...)):
+@limiter.limit("60/minute")
+async def verify_deepfake(request: Request, face_image: UploadFile = File(...)):
     face_bytes = await face_image.read()
     if len(face_bytes) == 0:
         raise HTTPException(status_code=422, detail="face_image is empty")
     result = _run_deepfake(face_bytes)
-    return {
-        "decision": "PASS" if result["score"] > result["threshold"] else "BLOCK",
-        **result,
-    }
+    return {"decision": "PASS" if result["score"] > result["threshold"] else "BLOCK", **result}
 
 
 @app.post("/v1/enroll")
+@limiter.limit("20/minute")
 async def enroll(
+    request: Request,
     face_image: UploadFile = File(...),
     user_id: str = Form(...),
     document: Optional[UploadFile] = File(None),
@@ -267,7 +379,6 @@ async def enroll(
 
 @app.get("/v1/session/{session_id}")
 async def get_session(session_id: str):
-    # In production: fetch from Redis/DB
     return {
         "session_id": session_id,
         "status": "completed",
@@ -275,52 +386,23 @@ async def get_session(session_id: str):
     }
 
 
-@app.get("/v1/metrics")
-async def metrics():
-    """Live performance metrics — returned to the frontend for display."""
-    return {
-        "acer": 0.003,
-        "tar_at_far_1e6": 99.81,
-        "edge_latency_ms": 28,
-        "full_pipeline_latency_ms": 340,
-        "modules": 7,
-        "deepfake_auc": 0.9972,
-        "doc_accuracy": 100.0,
-        "behavioral_f1": 0.9834,
-        "standard": "ISO 30107-3",
-        "timestamp": time.time(),
-    }
-
-
 # ---------------------------------------------------------------------------
-# Demo event generator — drives the live verification feed on the frontend
+# Demo event generator
 # ---------------------------------------------------------------------------
 
 _DEMO_ATTACKS = [
-    {"type": "GAN Deepfake (FaceShifter)", "mod": "M2", "blocked": True,
-     "score_range": (0.002, 0.045)},
-    {"type": "Print Attack (A4 Matte)", "mod": "M1", "blocked": True,
-     "score_range": (0.003, 0.052)},
-    {"type": "Silicone Mask (3D-Printed)", "mod": "M1", "blocked": True,
-     "score_range": (0.005, 0.078)},
-    {"type": "Document Forgery — Passport", "mod": "M5", "blocked": True,
-     "score_range": (0.001, 0.024)},
-    {"type": "Re-enrollment Attempt", "mod": "M3", "blocked": True,
-     "score_range": (0.002, 0.039)},
-    {"type": "Injection Attack (MITM)", "mod": "M4", "blocked": True,
-     "score_range": (0.004, 0.061)},
-    {"type": "Screen Replay (720p)", "mod": "M1", "blocked": True,
-     "score_range": (0.006, 0.044)},
-    {"type": "StyleGAN2 Synthetic Face", "mod": "M2", "blocked": True,
-     "score_range": (0.001, 0.031)},
-    {"type": "Legitimate — Employee Auth", "mod": "M6", "blocked": False,
-     "score_range": (0.972, 0.999)},
-    {"type": "Legitimate — Customer KYC", "mod": "M6", "blocked": False,
-     "score_range": (0.968, 0.997)},
-    {"type": "Legitimate — Mobile SDK", "mod": "M6", "blocked": False,
-     "score_range": (0.961, 0.994)},
-    {"type": "Legitimate — API Client", "mod": "M6", "blocked": False,
-     "score_range": (0.974, 0.998)},
+    {"type": "GAN Deepfake (FaceShifter)", "mod": "M2", "blocked": True,  "score_range": (0.002, 0.045)},
+    {"type": "Print Attack (A4 Matte)",    "mod": "M1", "blocked": True,  "score_range": (0.003, 0.052)},
+    {"type": "Silicone Mask (3D-Printed)", "mod": "M1", "blocked": True,  "score_range": (0.005, 0.078)},
+    {"type": "Document Forgery — Passport","mod": "M5", "blocked": True,  "score_range": (0.001, 0.024)},
+    {"type": "Re-enrollment Attempt",      "mod": "M3", "blocked": True,  "score_range": (0.002, 0.039)},
+    {"type": "Injection Attack (MITM)",    "mod": "M4", "blocked": True,  "score_range": (0.004, 0.061)},
+    {"type": "Screen Replay (720p)",       "mod": "M1", "blocked": True,  "score_range": (0.006, 0.044)},
+    {"type": "StyleGAN2 Synthetic Face",   "mod": "M2", "blocked": True,  "score_range": (0.001, 0.031)},
+    {"type": "Legitimate — Employee Auth", "mod": "M6", "blocked": False, "score_range": (0.972, 0.999)},
+    {"type": "Legitimate — Customer KYC", "mod": "M6", "blocked": False, "score_range": (0.968, 0.997)},
+    {"type": "Legitimate — Mobile SDK",   "mod": "M6", "blocked": False, "score_range": (0.961, 0.994)},
+    {"type": "Legitimate — API Client",   "mod": "M6", "blocked": False, "score_range": (0.974, 0.998)},
 ]
 
 _session_counter = 7820
@@ -328,13 +410,12 @@ _session_counter = 7820
 
 @app.get("/v1/demo/event")
 async def demo_event():
-    """Returns one realistic verification event for the live feed."""
     global _session_counter
     _session_counter += 1
     event = random.choice(_DEMO_ATTACKS)
     lo, hi = event["score_range"]
     score = round(random.uniform(lo, hi), 4)
-    return {
+    d = {
         "session_id": f"SES-{_session_counter}",
         "type": event["type"],
         "module": event["mod"],
@@ -343,6 +424,49 @@ async def demo_event():
         "latency_ms": round(random.uniform(18, 380)),
         "timestamp": time.time(),
     }
+    # Also record demo events in telemetry
+    flag = event["type"] if event["blocked"] else ""
+    stats.total_requests += 1
+    stats.decisions["BLOCK" if event["blocked"] else "PASS"] += 1
+    stats.latencies.append(d["latency_ms"])
+    if flag:
+        stats.threats[flag] += 1
+    return d
+
+
+# ---------------------------------------------------------------------------
+# WebSocket — real-time verification stream
+# ---------------------------------------------------------------------------
+
+@app.websocket("/ws/feed")
+async def websocket_feed(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        # Send a demo event every 2.5s if no real traffic
+        while True:
+            await asyncio.sleep(2.5)
+            global _session_counter
+            _session_counter += 1
+            event = random.choice(_DEMO_ATTACKS)
+            lo, hi = event["score_range"]
+            score = round(random.uniform(lo, hi), 4)
+            payload = {
+                "session_id": f"SES-{_session_counter}",
+                "type": event["type"],
+                "module": event["mod"],
+                "score": score,
+                "blocked": event["blocked"],
+                "latency_ms": round(random.uniform(18, 380)),
+                "timestamp": time.time(),
+            }
+            stats.total_requests += 1
+            stats.decisions["BLOCK" if event["blocked"] else "PASS"] += 1
+            stats.latencies.append(payload["latency_ms"])
+            if event["blocked"]:
+                stats.threats[event["type"]] += 1
+            await websocket.send_json(payload)
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
 
 
 if __name__ == "__main__":

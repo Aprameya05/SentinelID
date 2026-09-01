@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SentinelID Ops</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#020811;
+  --bg1:#050D1A;
+  --bg2:#071020;
+  --border:rgba(255,255,255,0.06);
+  --border2:rgba(255,255,255,0.1);
+  --accent:#0EA5E9;
+  --accent-dim:rgba(14,165,233,0.1);
+  --text:#DDE8F4;
+  --text2:#6A87A4;
+  --text3:#344A60;
+  --green:#22C55E;
+  --red:#F43F5E;
+  --yellow:#F59E0B;
+  --indigo:#818CF8;
+  --mono:'JetBrains Mono',monospace;
+  --sans:'Manrope',sans-serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;-webkit-font-smoothing:antialiased}
+
+/* TOP BAR */
+header{
+  height:52px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 28px;
+  border-bottom:1px solid var(--border);
+  background:rgba(2,8,17,0.9);
+  position:sticky;top:0;z-index:100;
+}
+.h-left{display:flex;align-items:center;gap:16px}
+.h-wordmark{font-size:14px;font-weight:700;letter-spacing:-0.3px;color:var(--text)}
+.h-sep{width:1px;height:16px;background:var(--border2)}
+.h-page{font-family:var(--mono);font-size:10.5px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase}
+.h-right{display:flex;align-items:center;gap:12px}
+.h-conn{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10.5px;color:var(--text3)}
+.h-dot{width:6px;height:6px;border-radius:50%;background:var(--text3)}
+.h-dot.live{background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2.5s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.h-time{font-family:var(--mono);font-size:10.5px;color:var(--text3)}
+.back-link{font-size:12px;color:var(--text3);text-decoration:none;transition:color .12s}
+.back-link:hover{color:var(--text2)}
+
+/* GRID */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  grid-template-rows:auto auto auto;
+  gap:1px;
+  background:var(--border);
+  height:calc(100vh - 52px);
+  overflow:hidden;
+}
+.cell{
+  background:var(--bg);
+  padding:20px;
+  overflow:hidden;
+  display:flex;flex-direction:column;
+}
+.cell-head{
+  display:flex;align-items:baseline;justify-content:space-between;
+  margin-bottom:16px;
+  flex-shrink:0;
+}
+.cell-title{
+  font-family:var(--mono);font-size:10px;color:var(--text3);
+  letter-spacing:0.12em;text-transform:uppercase;
+}
+.cell-meta{font-family:var(--mono);font-size:10px;color:var(--text3)}
+
+/* KPI row — spans all 4 columns */
+.kpi-row{
+  grid-column:1/-1;
+  display:grid;grid-template-columns:repeat(6,1fr);
+  gap:1px;
+  background:var(--border);
+}
+.kpi{
+  background:var(--bg);
+  padding:18px 22px;
+  display:flex;flex-direction:column;gap:4px;
+}
+.kpi-num{
+  font-family:var(--mono);font-size:26px;font-weight:400;
+  color:var(--text);line-height:1;letter-spacing:-1px;
+}
+.kpi-num.green{color:var(--green)}
+.kpi-num.red{color:var(--red)}
+.kpi-num.yellow{color:var(--yellow)}
+.kpi-num.blue{color:var(--accent)}
+.kpi-label{font-size:10.5px;color:var(--text2);font-weight:500}
+.kpi-sub{font-family:var(--mono);font-size:9.5px;color:var(--text3);letter-spacing:0.04em;margin-top:2px}
+
+/* DECISION PIE */
+.decision-cell{grid-column:span 1}
+.pie-wrap{
+  display:flex;align-items:center;gap:20px;
+  flex:1;
+}
+.pie-svg{flex-shrink:0}
+.pie-legend{display:flex;flex-direction:column;gap:10px;flex:1}
+.legend-item{display:flex;align-items:center;gap:8px}
+.legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.legend-label{font-size:11px;color:var(--text2);flex:1}
+.legend-val{font-family:var(--mono);font-size:11px;color:var(--text);font-weight:500}
+
+/* LATENCY BARS */
+.lat-cell{grid-column:span 1}
+.bar-list{display:flex;flex-direction:column;gap:8px;flex:1;justify-content:space-around}
+.bar-row{display:flex;align-items:center;gap:8px}
+.bar-label{font-family:var(--mono);font-size:10px;color:var(--text3);width:44px;flex-shrink:0}
+.bar-track{flex:1;height:4px;background:var(--bg2);border-radius:2px;overflow:hidden}
+.bar-fill{height:100%;border-radius:2px;background:var(--accent);transition:width .6s ease}
+.bar-val{font-family:var(--mono);font-size:10px;color:var(--text2);width:36px;text-align:right;flex-shrink:0}
+
+/* THREAT BREAKDOWN */
+.threat-cell{grid-column:span 2}
+.threat-list{display:flex;flex-direction:column;gap:3px;flex:1;overflow-y:auto}
+.threat-row{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 10px;border-radius:4px;
+  transition:background .1s;
+}
+.threat-row:hover{background:rgba(255,255,255,0.02)}
+.threat-rank{font-family:var(--mono);font-size:9.5px;color:var(--text3);width:16px;flex-shrink:0}
+.threat-name{font-size:12px;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.threat-bar-track{width:80px;height:3px;background:var(--bg2);border-radius:2px;flex-shrink:0}
+.threat-bar-fill{height:100%;border-radius:2px;background:var(--red);transition:width .5s ease}
+.threat-count{font-family:var(--mono);font-size:10.5px;color:var(--text2);width:28px;text-align:right;flex-shrink:0}
+
+/* LIVE FEED */
+.feed-cell{grid-column:span 2}
+.feed-inner{display:flex;flex-direction:column;gap:2px;flex:1;overflow:hidden}
+.fi{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 10px;border-radius:4px;
+  border:1px solid transparent;
+  font-size:11.5px;
+  flex-shrink:0;
+  transition:opacity .2s;
+}
+.fi.b{border-color:rgba(244,63,94,0.12);background:rgba(244,63,94,0.04)}
+.fi.p{border-color:rgba(34,197,94,0.1);background:rgba(34,197,94,0.03)}
+.fi-badge{
+  width:22px;height:16px;border-radius:3px;
+  display:grid;place-items:center;
+  font-family:var(--mono);font-size:9px;font-weight:600;flex-shrink:0;
+}
+.fi.b .fi-badge{background:rgba(244,63,94,0.12);color:var(--red)}
+.fi.p .fi-badge{background:rgba(34,197,94,0.1);color:var(--green)}
+.fi-id{font-family:var(--mono);font-size:10px;color:var(--text3);width:68px;flex-shrink:0}
+.fi-type{color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fi-mod{font-family:var(--mono);font-size:10px;color:var(--text3);flex-shrink:0;width:24px}
+.fi-score{font-family:var(--mono);font-size:10.5px;flex-shrink:0;width:48px;text-align:right}
+.fi.b .fi-score{color:var(--red)}
+.fi.p .fi-score{color:var(--green)}
+
+/* LATENCY CHART — sparkline area */
+.spark-cell{grid-column:span 2}
+.spark-wrap{flex:1;position:relative}
+canvas.spark{width:100%;height:100%;display:block}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="h-left">
+    <a href="/" style="text-decoration:none"><span class="h-wordmark">SentinelID</span></a>
+    <div class="h-sep"></div>
+    <span class="h-page">Operations Dashboard</span>
+  </div>
+  <div class="h-right">
+    <div class="h-conn"><span class="h-dot" id="ws-dot"></span><span id="ws-label">Connecting...</span></div>
+    <div class="h-sep"></div>
+    <span class="h-time" id="clock"></span>
+    <a href="/" class="back-link">Back to site</a>
+  </div>
+</header>
+
+<div class="grid">
+
+  <!-- KPI ROW -->
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-num" id="kpi-total">--</div>
+      <div class="kpi-label">Total Requests</div>
+      <div class="kpi-sub">SINCE LAST RESTART</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-num green" id="kpi-pass">--</div>
+      <div class="kpi-label">Passed</div>
+      <div class="kpi-sub" id="kpi-pass-pct">-- %</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-num red" id="kpi-block">--</div>
+      <div class="kpi-label">Blocked</div>
+      <div class="kpi-sub" id="kpi-block-pct">-- %</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-num yellow" id="kpi-review">--</div>
+      <div class="kpi-label">For Review</div>
+      <div class="kpi-sub" id="kpi-review-pct">-- %</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-num blue" id="kpi-avg-lat">--</div>
+      <div class="kpi-label">Avg Latency (ms)</div>
+      <div class="kpi-sub" id="kpi-p95">P95 -- ms</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-num" id="kpi-uptime">--</div>
+      <div class="kpi-label">Uptime</div>
+      <div class="kpi-sub">HH:MM:SS</div>
+    </div>
+  </div>
+
+  <!-- DECISION PIE -->
+  <div class="cell decision-cell">
+    <div class="cell-head">
+      <span class="cell-title">Decision Distribution</span>
+      <span class="cell-meta" id="pie-total">0 requests</span>
+    </div>
+    <div class="pie-wrap">
+      <svg class="pie-svg" width="90" height="90" viewBox="0 0 90 90">
+        <circle cx="45" cy="45" r="38" fill="none" stroke="var(--bg2)" stroke-width="14"/>
+        <circle id="pie-pass" cx="45" cy="45" r="38" fill="none" stroke="var(--green)" stroke-width="14"
+          stroke-dasharray="0 239" stroke-dashoffset="0" transform="rotate(-90 45 45)" style="transition:stroke-dasharray .6s ease"/>
+        <circle id="pie-block" cx="45" cy="45" r="38" fill="none" stroke="var(--red)" stroke-width="14"
+          stroke-dasharray="0 239" stroke-dashoffset="0" transform="rotate(-90 45 45)" style="transition:all .6s ease"/>
+        <circle id="pie-review" cx="45" cy="45" r="38" fill="none" stroke="var(--yellow)" stroke-width="14"
+          stroke-dasharray="0 239" stroke-dashoffset="0" transform="rotate(-90 45 45)" style="transition:all .6s ease"/>
+      </svg>
+      <div class="pie-legend">
+        <div class="legend-item">
+          <div class="legend-dot" style="background:var(--green)"></div>
+          <span class="legend-label">Pass</span>
+          <span class="legend-val" id="leg-pass">--</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:var(--red)"></div>
+          <span class="legend-label">Block</span>
+          <span class="legend-val" id="leg-block">--</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:var(--yellow)"></div>
+          <span class="legend-label">Review</span>
+          <span class="legend-val" id="leg-review">--</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODULE LATENCY BARS -->
+  <div class="cell lat-cell">
+    <div class="cell-head">
+      <span class="cell-title">Module Avg Latency</span>
+      <span class="cell-meta">ms</span>
+    </div>
+    <div class="bar-list" id="lat-bars">
+      <!-- filled by JS -->
+    </div>
+  </div>
+
+  <!-- THREAT BREAKDOWN -->
+  <div class="cell threat-cell">
+    <div class="cell-head">
+      <span class="cell-title">Top Threats Detected</span>
+      <span class="cell-meta" id="threat-total">--</span>
+    </div>
+    <div class="threat-list" id="threat-list"></div>
+  </div>
+
+  <!-- LIVE FEED -->
+  <div class="cell feed-cell">
+    <div class="cell-head">
+      <span class="cell-title">Live Verification Feed</span>
+      <span class="cell-meta" id="feed-rate">-- /min</span>
+    </div>
+    <div class="feed-inner" id="ops-feed"></div>
+  </div>
+
+  <!-- LATENCY SPARKLINE -->
+  <div class="cell spark-cell">
+    <div class="cell-head">
+      <span class="cell-title">Request Latency</span>
+      <span class="cell-meta">last 60 events (ms)</span>
+    </div>
+    <div class="spark-wrap">
+      <canvas id="spark-canvas"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = 'https://sentinelid.onrender.com';
+const WS  = 'wss://sentinelid.onrender.com/ws/feed';
+
+// Clock
+function tick(){document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-GB',{hour12:false})}
+tick();setInterval(tick,1000);
+
+// Uptime formatter
+function fmtUptime(s){
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60;
+  return`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+}
+
+// Stats polling
+async function loadStats(){
+  try{
+    const r=await fetch(`${API}/v1/stats`,{signal:AbortSignal.timeout(6000)});
+    const d=await r.json();
+    const total=d.total_requests||0;
+    const pass=d.decisions?.PASS||0;
+    const block=d.decisions?.BLOCK||0;
+    const review=d.decisions?.REVIEW||0;
+    const pct=(n)=>total?((n/total)*100).toFixed(1)+'%':'0%';
+
+    document.getElementById('kpi-total').textContent=total.toLocaleString();
+    document.getElementById('kpi-pass').textContent=pass.toLocaleString();
+    document.getElementById('kpi-block').textContent=block.toLocaleString();
+    document.getElementById('kpi-review').textContent=review.toLocaleString();
+    document.getElementById('kpi-pass-pct').textContent=pct(pass);
+    document.getElementById('kpi-block-pct').textContent=pct(block);
+    document.getElementById('kpi-review-pct').textContent=pct(review);
+    document.getElementById('kpi-avg-lat').textContent=d.avg_latency_ms||'--';
+    document.getElementById('kpi-p95').textContent=`P95 ${d.p95_latency_ms||'--'} ms`;
+    document.getElementById('kpi-uptime').textContent=fmtUptime(d.uptime_seconds||0);
+    document.getElementById('pie-total').textContent=`${total} requests`;
+
+    // Pie chart
+    const C=2*Math.PI*38; // circumference
+    const passArc=(pass/Math.max(total,1))*C;
+    const blockArc=(block/Math.max(total,1))*C;
+    const reviewArc=(review/Math.max(total,1))*C;
+    document.getElementById('pie-pass').setAttribute('stroke-dasharray',`${passArc} ${C}`);
+    document.getElementById('pie-block').setAttribute('stroke-dasharray',`${blockArc} ${C}`);
+    document.getElementById('pie-block').setAttribute('stroke-dashoffset',`${-passArc}`);
+    document.getElementById('pie-review').setAttribute('stroke-dasharray',`${reviewArc} ${C}`);
+    document.getElementById('pie-review').setAttribute('stroke-dashoffset',`${-(passArc+blockArc)}`);
+    document.getElementById('leg-pass').textContent=pass;
+    document.getElementById('leg-block').textContent=block;
+    document.getElementById('leg-review').textContent=review;
+
+    // Module latency bars
+    const ml=d.module_avg_latency_ms||{};
+    const keys=['M1_LIVENESS','M2_DEEPFAKE','M3_FACE_RECOGNITION','M4_BEHAVIORAL','M5_DOCUMENT','M6_FUSION','M7_EDGE'];
+    const labels=['M1','M2','M3','M4','M5','M6','M7'];
+    const maxLat=Math.max(...keys.map(k=>ml[k]||0),1);
+    const container=document.getElementById('lat-bars');
+    if(!container._built){
+      container._built=true;
+      container.innerHTML=keys.map((k,i)=>`
+        <div class="bar-row">
+          <span class="bar-label">${labels[i]}</span>
+          <div class="bar-track"><div class="bar-fill" id="bar-${i}" style="width:0%"></div></div>
+          <span class="bar-val" id="barv-${i}">--</span>
+        </div>`).join('');
+    }
+    keys.forEach((k,i)=>{
+      const v=ml[k]||0;
+      document.getElementById(`bar-${i}`).style.width=v?`${(v/maxLat)*100}%`:'0%';
+      document.getElementById(`barv-${i}`).textContent=v?`${v}ms`:'--';
+    });
+
+    // Threats
+    const threats=d.top_threats||[];
+    const maxT=threats.length?threats[0][1]:1;
+    document.getElementById('threat-total').textContent=`${threats.reduce((a,b)=>a+b[1],0)} attacks`;
+    document.getElementById('threat-list').innerHTML=threats.map(([name,count],i)=>`
+      <div class="threat-row">
+        <span class="threat-rank">${i+1}</span>
+        <span class="threat-name">${name}</span>
+        <div class="threat-bar-track"><div class="threat-bar-fill" style="width:${(count/maxT)*100}%"></div></div>
+        <span class="threat-count">${count}</span>
+      </div>`).join('');
+  }catch{}
+}
+loadStats();
+setInterval(loadStats,5000);
+
+// Sparkline
+const latHistory=[];
+const sparkCanvas=document.getElementById('spark-canvas');
+function drawSpark(){
+  const dpr=devicePixelRatio||1;
+  const rect=sparkCanvas.parentElement.getBoundingClientRect();
+  sparkCanvas.width=rect.width*dpr;
+  sparkCanvas.height=rect.height*dpr;
+  sparkCanvas.style.width=rect.width+'px';
+  sparkCanvas.style.height=rect.height+'px';
+  const ctx=sparkCanvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  const w=rect.width,h=rect.height;
+  const data=latHistory.slice(-60);
+  if(data.length<2)return;
+  const maxV=Math.max(...data,1);
+  const minV=Math.min(...data);
+  const pad=12;
+  ctx.clearRect(0,0,w,h);
+  // Grid
+  ctx.strokeStyle='rgba(255,255,255,0.04)';ctx.lineWidth=1;
+  for(let i=1;i<4;i++){const y=pad+((h-pad*2)/4)*i;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+  // Area
+  const pts=data.map((v,i)=>({
+    x:(i/(data.length-1))*(w-pad*2)+pad,
+    y:h-pad-((v-minV)/(maxV-minV||1))*(h-pad*2)
+  }));
+  const grad=ctx.createLinearGradient(0,0,0,h);
+  grad.addColorStop(0,'rgba(14,165,233,0.18)');
+  grad.addColorStop(1,'rgba(14,165,233,0)');
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x,h);
+  pts.forEach(p=>ctx.lineTo(p.x,p.y));
+  ctx.lineTo(pts[pts.length-1].x,h);
+  ctx.closePath();
+  ctx.fillStyle=grad;ctx.fill();
+  // Line
+  ctx.beginPath();ctx.strokeStyle='rgba(14,165,233,0.8)';ctx.lineWidth=1.5;ctx.lineJoin='round';
+  pts.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));
+  ctx.stroke();
+  // Latest point
+  if(pts.length){
+    const last=pts[pts.length-1];
+    ctx.beginPath();ctx.arc(last.x,last.y,3,0,Math.PI*2);
+    ctx.fillStyle='var(--accent)';ctx.fill();
+  }
+}
+window.addEventListener('resize',drawSpark);
+
+// Feed
+const opsFeed=document.getElementById('ops-feed');
+let recentCount=0;
+function addFeedRow(d){
+  recentCount++;
+  const el=document.createElement('div');
+  el.className=`fi ${d.blocked?'b':'p'}`;
+  el.innerHTML=`<div class="fi-badge">${d.blocked?'BLK':'OK'}</div><div class="fi-id">${d.session_id}</div><div class="fi-type">${d.type}</div><div class="fi-mod">${d.module}</div><div class="fi-score">${typeof d.score==='number'?d.score.toFixed(4):d.score}</div>`;
+  el.style.opacity='0';el.style.transform='translateY(-4px)';
+  opsFeed.prepend(el);
+  requestAnimationFrame(()=>{el.style.transition='opacity .2s,transform .2s';el.style.opacity='1';el.style.transform='none'});
+  while(opsFeed.children.length>12){opsFeed.lastChild.remove();}
+  if(d.latency_ms){latHistory.push(d.latency_ms);drawSpark();}
+}
+
+// Rate tracker
+let rateInterval=null;
+function startRateTracker(){
+  if(rateInterval)return;
+  rateInterval=setInterval(()=>{
+    document.getElementById('feed-rate').textContent=`${recentCount*2}/min`;
+    recentCount=0;
+  },30000);
+}
+
+// WebSocket
+function connectWS(){
+  const ws=new WebSocket(WS);
+  const dot=document.getElementById('ws-dot');
+  const label=document.getElementById('ws-label');
+  ws.onopen=()=>{
+    dot.classList.add('live');label.textContent='Live — WebSocket';
+    startRateTracker();
+  };
+  ws.onmessage=e=>{
+    try{const d=JSON.parse(e.data);addFeedRow(d);}catch{}
+  };
+  ws.onclose=()=>{
+    dot.classList.remove('live');label.textContent='Reconnecting...';
+    setTimeout(connectWS,4000);
+  };
+  ws.onerror=()=>ws.close();
+}
+connectWS();
+</script>
+</body>
+</html>
