@@ -1080,32 +1080,69 @@ window.addEventListener('resize',()=>{
 // ── API BASE ────────────────────────────────────────────────────────────────
 const API='https://sentinelid.onrender.com';
 
-// ── NAV HEALTH BADGE ────────────────────────────────────────────────────────
-async function checkHealth(){
+// ── NAV HEALTH BADGE + BACKEND WARM-UP ──────────────────────────────────────
+let backendReady=false;
+
+function setNavStatus(ok,msg){
   const badge=document.querySelector('.sys-status');
   const dot=document.querySelector('.sys-dot');
+  if(ok){
+    badge.style.borderColor='rgba(34,197,94,0.2)';badge.style.background='rgba(34,197,94,0.05)';
+    dot.style.background='var(--green)';dot.style.boxShadow='0 0 6px var(--green)';
+  }else{
+    badge.style.borderColor='rgba(245,158,11,0.25)';badge.style.background='rgba(245,158,11,0.05)';
+    dot.style.background='var(--yellow)';dot.style.boxShadow='0 0 6px var(--yellow)';
+  }
+  badge.lastChild.textContent=msg;
+}
+
+function setDemoBtn(enabled,label){
+  const btn=document.getElementById('run-btn');
+  if(!btn)return;
+  btn.disabled=!enabled;btn.textContent=label;
+  btn.style.opacity=enabled?'1':'0.5';
+  btn.style.cursor=enabled?'pointer':'default';
+}
+
+async function warmBackend(){
+  setNavStatus(false,'BACKEND WARMING UP');
+  setDemoBtn(false,'Warming up backend...');
+  let attempts=0;
+  while(!backendReady){
+    try{
+      const r=await fetch(`${API}/v1/health`,{signal:AbortSignal.timeout(10000)});
+      const d=await r.json();
+      if(d.status==='healthy'){
+        backendReady=true;
+        setNavStatus(true,'ALL SYSTEMS NOMINAL');
+        setDemoBtn(true,'Run Verification');
+        loadMetrics();
+        seedFeed();
+        return;
+      }
+    }catch{}
+    attempts++;
+    const wait=Math.min(4+attempts*2,15);
+    setNavStatus(false,`WARMING UP — retry in ${wait}s`);
+    await new Promise(res=>setTimeout(res,wait*1000));
+  }
+}
+
+warmBackend();
+setInterval(async()=>{
+  if(!backendReady)return;
   try{
     const r=await fetch(`${API}/v1/health`,{signal:AbortSignal.timeout(6000)});
     const d=await r.json();
-    if(d.status==='healthy'){
-      badge.style.borderColor='rgba(34,197,94,0.2)';
-      badge.style.background='rgba(34,197,94,0.05)';
-      dot.style.background='var(--green)';
-      dot.style.boxShadow='0 0 6px var(--green)';
-      badge.lastChild.textContent='ALL SYSTEMS NOMINAL';
-    }else{
-      throw new Error('degraded');
-    }
+    if(d.status!=='healthy')throw new Error();
+    setNavStatus(true,'ALL SYSTEMS NOMINAL');
   }catch{
-    badge.style.borderColor='rgba(245,158,11,0.25)';
-    badge.style.background='rgba(245,158,11,0.05)';
-    dot.style.background='var(--yellow)';
-    dot.style.boxShadow='0 0 6px var(--yellow)';
-    badge.lastChild.textContent='BACKEND COLD STARTING';
+    backendReady=false;
+    setNavStatus(false,'BACKEND OFFLINE');
+    setDemoBtn(false,'Backend offline');
+    warmBackend();
   }
-}
-checkHealth();
-setInterval(checkHealth, 30000);
+},30000);
 
 // ── METRICS STRIP ───────────────────────────────────────────────────────────
 async function loadMetrics(){
@@ -1119,19 +1156,18 @@ async function loadMetrics(){
       els[2].innerHTML=`${d.edge_latency_ms}<sup>ms</sup>`;
       els[3].innerHTML=`${d.full_pipeline_latency_ms}<sup>ms</sup>`;
     }
-    // Also update hero metrics
     const hm=document.querySelectorAll('.hm-num');
     if(hm.length>=3){
       hm[0].innerHTML=`${d.acer}<span> ACER</span>`;
       hm[1].innerHTML=`${d.tar_at_far_1e6}<span>%</span>`;
       hm[2].innerHTML=`${d.full_pipeline_latency_ms}<span>ms</span>`;
     }
-  }catch(e){/* keep static values if backend is cold */}
+  }catch{}
 }
-loadMetrics();
 
 // ── LIVE VERIFICATION FEED ──────────────────────────────────────────────────
 const feed=document.getElementById('feed');
+let feedPolling=false;
 
 function renderFeedItem(d){
   const el=document.createElement('div');
@@ -1147,31 +1183,27 @@ function renderFeedItem(d){
   }
 }
 
-// Seed the feed with 5 events, then poll every 2.2s
 async function seedFeed(){
+  if(feedPolling)return;
+  feedPolling=true;
+  // Clear any placeholder items
+  feed.innerHTML='';
   for(let i=0;i<5;i++){
     try{
       const r=await fetch(`${API}/v1/demo/event`,{signal:AbortSignal.timeout(5000)});
-      const d=await r.json();
-      renderFeedItem(d);
-    }catch{
-      // Backend cold — render placeholder item
-      const placeholder={session_id:'SES-????',type:'Connecting to backend...',module:'—',score:'—',blocked:false};
-      renderFeedItem(placeholder);
-    }
+      renderFeedItem(await r.json());
+    }catch{}
     await new Promise(res=>setTimeout(res,120));
   }
+  // Start polling
+  setInterval(async()=>{
+    if(!backendReady)return;
+    try{
+      const r=await fetch(`${API}/v1/demo/event`,{signal:AbortSignal.timeout(4000)});
+      renderFeedItem(await r.json());
+    }catch{}
+  },2200);
 }
-seedFeed();
-
-async function fetchAndAddEvent(){
-  try{
-    const r=await fetch(`${API}/v1/demo/event`,{signal:AbortSignal.timeout(4000)});
-    const d=await r.json();
-    renderFeedItem(d);
-  }catch{ /* skip tick if backend is unreachable */ }
-}
-setInterval(fetchAndAddEvent,2200);
 
 // PIPELINE NODE ANIMATION
 const nodes=document.querySelectorAll('.pm-node');
